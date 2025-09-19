@@ -42,3 +42,4 @@ script-files = ["pyscstadmin"]
 
 [tool.setuptools.package-data]
 "*" = ["*.txt", "*.md"]
+
