@@ -1,0 +1,33 @@
+Source: python3-pyscstadmin
+Section: admin
+Priority: optional
+Maintainer: TrueNAS <dev-team@ixsystems.com>
+Build-Depends: debhelper (>= 12),
+               dh-python,
+               python3-all,
+               python3-setuptools,
+               python3-build,
+               pybuild-plugin-pyproject
+Standards-Version: 4.5.0
+Homepage: https://github.com/truenas/truenas_pyscstadmin
+
+Package: python3-pyscstadmin
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends}
+Description: Python library and CLI tool for SCST management
+ A comprehensive Python library and command-line interface for managing
+ SCST (SCSI Target Subsystem for Linux) through the kernel sysfs interface.
+ .
+ This tool provides complete SCST configuration management with single-pass
+ convergence, automatic kernel module loading, and robust error handling.
+ .
+ Features:
+  * Configuration file parsing and validation
+  * Complete SCST subsystem configuration
+  * Incremental configuration changes
+  * Configuration clearing and cleanup
+  * Copy manager duplicate LUN handling
+  * Comprehensive error handling and logging
+ .
+ This package includes both the Python library (scstadmin) and the
+ command-line tool (pyscstadmin) for SCST administration.
