@@ -129,4 +129,4 @@ GPLv2 - Based on the original scstadmin Perl script by Mark R. Buechler
 
 For detailed library documentation and code architecture, see `scstadmin/README.md`.
 
-For issues and contributions: https://github.com/scst-project/scst (or your project's issue tracker)
+For issues and contributions: https://github.com/truenas/truenas_pyscstadmin

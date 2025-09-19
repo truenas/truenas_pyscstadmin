@@ -1,7 +1,7 @@
 Source: python3-pyscstadmin
 Section: admin
 Priority: optional
-Maintainer: TrueNAS <dev-team@ixsystems.com>
+Maintainer: TrueNAS <dev@truenas.com>
 Build-Depends: debhelper (>= 12),
                dh-python,
                python3-all,
@@ -31,3 +31,4 @@ Description: Python library and CLI tool for SCST management
  .
  This package includes both the Python library (scstadmin) and the
  command-line tool (pyscstadmin) for SCST administration.
+ 

@@ -4,7 +4,7 @@ Upstream-Contact: TrueNAS <dev-team@ixsystems.com>
 Source: https://github.com/truenas/truenas_pyscstadmin
 
 Files: *
-Copyright: 2025 TrueNAS / iXsystems, Inc.
+Copyright: 2025 iXsystems Inc. dba TrueNAS
 License: LGPL-3.0
 
 License: LGPL-3.0
@@ -24,3 +24,4 @@ License: LGPL-3.0
  .
  On Debian systems, the complete text of the GNU Lesser General Public
  License version 3 can be found in "/usr/share/common-licenses/LGPL-3".
+ 
