@@ -99,13 +99,11 @@ Examples:
             parser.print_help()
 
     except SCSTError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
-    except KeyboardInterrupt:
-        print("\nOperation cancelled", file=sys.stderr)
-        sys.exit(1)
-    except Exception as e:
         sys.exit(f"Error: {e}")
+    except KeyboardInterrupt:
+        sys.exit("Operation cancelled")
+    except Exception as e:
+        sys.exit(f"Unexpected error: {e}")
 
 
 if __name__ == '__main__':
