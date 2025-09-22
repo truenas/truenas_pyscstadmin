@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyscstadmin"
+version = "1.0.0"
+description = "Python library and CLI tool for managing SCST (SCSI Target Subsystem for Linux)"
+readme = "README.md"
+license = "LGPL-3.0"
+authors = [
+    {name = "TrueNAS", email = "dev-team@ixsystems.com"}
+]
+keywords = ["scst", "iscsi", "storage", "target", "scsi"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: System Administrators",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Systems Administration",
+    "Topic :: System :: Hardware",
+]
+requires-python = ">=3.7"
+
+[project.urls]
+Homepage = "https://github.com/truenas/truenas_pyscstadmin"
+Repository = "https://github.com/truenas/truenas_pyscstadmin"
+Issues = "https://github.com/truenas/truenas_pyscstadmin/issues"
+
+[tool.setuptools.packages.find]
+exclude = ["tests*"]
+
+[tool.setuptools]
+script-files = ["pyscstadmin"]
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.md"]
+

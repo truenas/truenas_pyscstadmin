@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""
+SCST Python Configurator CLI
+
+Command-line interface for the SCST Python configurator library.
+Provides the same CLI interface as the original scstadmin tool.
+
+Based on the original scstladmin Perl script by Mark R. Buechler
+License: GPLv2
+"""
+
+import sys
+import argparse
+import logging
+
+# Import from the new package structure
+try:
+    # Try importing from installed package first
+    from scstadmin import SCSTAdmin, SCSTError
+except ImportError:
+    # Fallback to relative import for development
+    import os
+    sys.path.insert(0, os.path.dirname(__file__))
+    from scstadmin import SCSTAdmin, SCSTError
+
+
+def setup_logging(level: str = "INFO"):
+    """Setup logging configuration for CLI"""
+    logging.basicConfig(
+        level=getattr(logging, level.upper()),
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+
+def main():
+    """Main entry point"""
+    parser = argparse.ArgumentParser(
+        description="SCST Python Configurator",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s -config /etc/scst.conf
+  %(prog)s -check_config /etc/scst.conf
+  %(prog)s -clear_config
+        """
+    )
+
+    # Configuration operations
+    config_group = parser.add_argument_group('Configuration Operations')
+    config_group.add_argument('-config', metavar='FILE',
+                              help='Configure SCST from FILE')
+    config_group.add_argument('-check_config', metavar='FILE',
+                              help='Check configuration FILE for validity')
+    config_group.add_argument('-clear_config', action='store_true',
+                              help='Clear all SCST configuration')
+
+    # Options
+    parser.add_argument('-suspend', type=int, metavar='N',
+                        help='Suspend SCST IO during configuration operations with value N (improves performance)')
+    parser.add_argument('-timeout', type=int, default=60,
+                        help='Timeout for operations (default: 60s)')
+    parser.add_argument(
+        '-log_level',
+        choices=[
+            'DEBUG',
+            'INFO',
+            'WARNING',
+            'ERROR'],
+        default='WARNING',
+        help='Set logging level')
+    parser.add_argument('-version', action='version',
+                        version="SCST Python Configurator v1.0.0")
+
+    args = parser.parse_args()
+
+    setup_logging(args.log_level)
+
+    try:
+        # Create SCSTAdmin instance with library logging level matching CLI level
+        admin = SCSTAdmin(timeout=args.timeout, log_level=args.log_level)
+
+        if args.config:
+            config = admin.parser.parse_config_file(args.config)
+            admin.apply_configuration(config, suspend=args.suspend)
+            print(f"Configuration from {args.config} applied successfully")
+
+        elif args.check_config:
+            if admin.check_configuration(args.check_config):
+                print(f"Configuration file {args.check_config} is valid")
+            else:
+                print(f"Configuration file {args.check_config} has errors")
+                sys.exit(1)
+
+        elif args.clear_config:
+            admin.clear_configuration(suspend=args.suspend)
+            print("Configuration cleared")
+
+        else:
+            parser.print_help()
+
+    except SCSTError as e:
+        sys.exit(f"Error: {e}")
+    except KeyboardInterrupt:
+        sys.exit("Operation cancelled")
+    except Exception as e:
+        sys.exit(f"Unexpected error: {e}")
+
+
+if __name__ == '__main__':
+    main()
