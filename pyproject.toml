@@ -9,7 +9,7 @@ description = "Python library and CLI tool for managing SCST (SCSI Target Subsys
 readme = "README.md"
 license = "LGPL-3.0"
 authors = [
-    {name = "TrueNAS", email = "dev-team@ixsystems.com"}
+    {name = "TrueNAS Engineering", email = "dev@truenas.com"}
 ]
 keywords = ["scst", "iscsi", "storage", "target", "scsi"]
 classifiers = [

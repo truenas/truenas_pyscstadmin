@@ -13,5 +13,5 @@ python3-pyscstadmin (1.0.0-1) unstable; urgency=medium
   * Comprehensive test suite for reliability
   * Single-pass convergence for optimal performance
 
- -- TrueNAS <dev-team@ixsystems.com>  Fri, 19 Sep 2025 12:00:00 +0000
+ -- TrueNAS Engineering <dev@truenas.com>  Fri, 19 Sep 2025 12:00:00 +0000
 

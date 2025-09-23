@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: pyscstadmin
-Upstream-Contact: TrueNAS <dev-team@ixsystems.com>
+Upstream-Contact: TrueNAS Engineering <dev@truenas.com>
 Source: https://github.com/truenas/truenas_pyscstadmin
 
 Files: *
