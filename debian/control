@@ -1,4 +1,4 @@
-Source: python3-pyscstadmin
+Source: truenas-pyscstadmin
 Section: admin
 Priority: optional
 Maintainer: TrueNAS <dev@truenas.com>
@@ -11,7 +11,7 @@ Build-Depends: debhelper (>= 12),
 Standards-Version: 4.5.0
 Homepage: https://github.com/truenas/truenas_pyscstadmin
 
-Package: python3-pyscstadmin
+Package: python3-truenas-pyscstadmin
 Architecture: all
 Depends: ${python3:Depends}, ${misc:Depends}
 Description: Python library and CLI tool for SCST management

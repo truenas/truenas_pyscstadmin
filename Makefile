@@ -36,7 +36,7 @@ clean:  ## Clean up Python cache files and build artifacts
 	rm -rf htmlcov .coverage build dist .pybuild
 	rm -rf debian/.debhelper debian/debhelper-build-stamp debian/files
 	rm -rf debian/*.debhelper.log debian/*.postinst.debhelper debian/*.prerm.debhelper
-	rm -rf debian/*.substvars debian/python3-pyscstadmin/
+	rm -rf debian/*.substvars debian/python3-truenas-pyscstadmin/
 
 install-dev:  ## Install development dependencies
 	pip install pytest pytest-cov pytest-watch flake8 black
