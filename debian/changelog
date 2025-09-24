@@ -1,4 +1,4 @@
-python3-pyscstadmin (1.0.0-1) unstable; urgency=medium
+truenas-pyscstadmin (1.0.0-1) unstable; urgency=medium
 
   * Initial release of pyscstadmin
   * Complete Python library and CLI tool for SCST management
