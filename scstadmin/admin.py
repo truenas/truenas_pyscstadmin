@@ -345,27 +345,12 @@ class SCSTAdmin:
 
                 # Get known driver attributes to skip
                 driver_attrs = self.DRIVER_ATTRIBUTES.get(driver, set())
-                driver_attrs.update({self.sysfs.MGMT_INTERFACE, self.sysfs.ENABLED_ATTR})  # Always skip these
+                driver_attrs.update({self.sysfs.MGMT_INTERFACE, self.sysfs.ENABLED_ATTR})
 
                 for item in self.sysfs.list_directory(driver_path):
-                    # Clear known driver attributes instead of skipping them
+                    # Skip known driver attributes (don't try to reset them)
                     if item in driver_attrs:
-                        # Skip management interfaces and enabled (enabled is handled separately)
-                        if item in {self.sysfs.MGMT_INTERFACE, self.sysfs.ENABLED_ATTR}:
-                            self.logger.debug(f"Skipping driver attribute '{driver}/{item}'")
-                            continue
-
-                        # Clear the driver attribute
-                        attr_path = f"{driver_path}/{item}"
-                        if os.access(attr_path, os.W_OK):
-                            try:
-                                # Get known default or use newline to reset
-                                default_value = self.config_reader._get_driver_attribute_default(driver, item)
-                                reset_value = default_value if default_value is not None else '\n'
-                                self.sysfs.write_sysfs(attr_path, reset_value, check_result=False)
-                                self.logger.debug(f"Reset driver attribute {driver}.{item}")
-                            except SCSTError:
-                                pass
+                        self.logger.debug(f"Skipping driver attribute '{driver}/{item}'")
                         continue
 
                     # Only process directories that are actual targets
@@ -377,9 +362,14 @@ class SCSTAdmin:
                         has_sessions = self.sysfs.valid_path(f"{item_path}/sessions")
 
                         if has_luns or has_ini_groups or has_sessions:
+                            # Remove dynamic target attributes before removing target
+                            self._clear_target_dynamic_attributes(driver, item)
                             self.target_writer.remove_target(driver, item)
                         else:
                             self.logger.debug(f"Skipping '{driver}/{item}' - not a target directory")
+
+                # Clear driver dynamic attributes after all targets removed
+                self._clear_driver_dynamic_attributes(driver)
 
             # Remove all devices
             self.logger.info("Removing all devices")
@@ -392,21 +382,6 @@ class SCSTAdmin:
                         try:
                             self.sysfs.write_sysfs(
                                 handler_mgmt, f"del_device {device}")
-                        except SCSTError:
-                            pass
-
-            # Clear global SCST attributes (reset to defaults)
-            self.logger.info("Clearing global SCST attributes")
-            scst_root_items = self.sysfs.list_directory(self.sysfs.SCST_ROOT)
-            for item in scst_root_items:
-                item_path = f"{self.sysfs.SCST_ROOT}/{item}"
-                # Only process files (attributes), not directories
-                if not os.path.isdir(item_path):
-                    # Skip read-only system attributes
-                    if item not in {'version', 'last_sysfs_mgmt_res'}:
-                        try:
-                            # Reset attribute to default value
-                            self.sysfs.write_sysfs(item_path, '\n', check_result=False)
                         except SCSTError:
                             pass
 
@@ -436,3 +411,58 @@ class SCSTAdmin:
         except Exception as e:
             self.logger.error(f"Configuration check failed: {e}")
             return False
+
+    def _clear_target_dynamic_attributes(self, driver: str, target: str) -> None:
+        """Remove all dynamic/mgmt-managed attributes from a target.
+
+        Dynamic attributes are multi-value attributes managed through the SCST mgmt
+        interface (e.g., IncomingUser, OutgoingUser, allowed_portal). These must be
+        explicitly removed before target deletion.
+
+        Args:
+            driver: Target driver name
+            target: Target name
+        """
+        try:
+            mgmt_info = self.config_reader._get_target_mgmt_info(driver)
+            current_attrs = self.config_reader._get_current_target_attrs(
+                driver, target, mgmt_info['target_attributes'])
+
+            for attr_name in mgmt_info['target_attributes']:
+                if current_attrs.get(attr_name) is not None:
+                    try:
+                        self.target_writer._remove_target_mgmt_attribute(driver, target, attr_name)
+                    except SCSTError:
+                        pass
+        except (SCSTError, KeyError):
+            pass
+
+    def _clear_driver_dynamic_attributes(self, driver: str) -> None:
+        """Remove all dynamic/mgmt-managed attributes from a driver.
+
+        Dynamic attributes are multi-value attributes managed through the SCST mgmt
+        interface. These should be cleared when removing all driver configuration.
+
+        Args:
+            driver: Driver name
+        """
+        try:
+            mgmt_info = self.config_reader._get_target_mgmt_info(driver)
+            driver_path = f"{self.sysfs.SCST_TARGETS}/{driver}"
+
+            for attr_name in mgmt_info['driver_attributes']:
+                attr_path = f"{driver_path}/{attr_name}"
+                if self.sysfs.valid_path(attr_path):
+                    try:
+                        # Read current value to see if attribute is set
+                        current_value = self.sysfs.read_sysfs(attr_path)
+                        if current_value and current_value.strip():
+                            # Use mgmt interface to remove driver attribute
+                            mgmt_path = f"{driver_path}/mgmt"
+                            self.sysfs.write_sysfs(
+                                mgmt_path, f"del_attribute {attr_name} {current_value.strip()}",
+                                check_result=False)
+                    except SCSTError:
+                        pass
+        except (SCSTError, KeyError):
+            pass
