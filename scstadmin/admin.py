@@ -362,7 +362,7 @@ class SCSTAdmin:
                         has_sessions = self.sysfs.valid_path(f"{item_path}/sessions")
 
                         if has_luns or has_ini_groups or has_sessions:
-                            # Remove dynamic target attributes before removing target
+                            # Clear dynamic target attributes before removing target
                             self._clear_target_dynamic_attributes(driver, item)
                             self.target_writer.remove_target(driver, item)
                         else:
