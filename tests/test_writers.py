@@ -1265,7 +1265,10 @@ class TestTargetWriter:
 
         # Mock config reader methods
         mock_config_reader._get_current_target_attrs.return_value = {"HeaderDigest": "None", "enabled": "1"}
-        mock_config_reader._get_target_mgmt_info.return_value = {"create_params": {"node_name"}}
+        mock_config_reader._get_target_mgmt_info.return_value = {
+            "create_params": {"node_name"},
+            "target_attributes": {"IncomingUser", "OutgoingUser"}
+        }
 
         # Mock _get_target_create_params to return creation params for new_target only
         def mock_get_create_params(driver, attrs):

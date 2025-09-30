@@ -21,6 +21,7 @@ def entity_exists(entity_path: str) -> bool:
 def attrs_config_differs(desired_attrs: Dict[str, str],
                          current_attrs: Dict[str, str],
                          skip_attrs: Optional[Set[str]] = None,
+                         removable_attrs: Optional[Set[str]] = None,
                          entity_type: str = "attribute") -> bool:
     """Compare desired configuration attributes with current live values.
 
@@ -32,11 +33,14 @@ def attrs_config_differs(desired_attrs: Dict[str, str],
     - Handles missing attributes that default to "0" (common SCST pattern)
     - Provides detailed debug logging for configuration differences
     - Allows selective attribute exclusion for comparison
+    - Checks for mgmt-managed attributes that need removal
 
     Args:
         desired_attrs: Target attribute values from configuration
         current_attrs: Live attribute values read from sysfs
         skip_attrs: Set of attribute names to exclude from comparison
+        removable_attrs: Set of mgmt-managed attributes that can be removed (e.g., IncomingUser).
+                        If provided, checks if any of these exist in current but not in desired.
         entity_type: Entity type name for debug logging (e.g., "Device", "Target")
 
     Returns:
@@ -66,5 +70,11 @@ def attrs_config_differs(desired_attrs: Dict[str, str],
             logger.debug(
                 f"{entity_type} attribute '{attr}' differs: current='{current_value}', desired='{desired_value}'")
             return True
+
+    # Check for removable attributes that exist in current but not in desired
+    if removable_attrs:
+        for attr in removable_attrs:
+            if attr not in desired_attrs and current_attrs.get(attr) is not None:
+                return True
 
     return False

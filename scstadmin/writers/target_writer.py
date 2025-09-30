@@ -6,7 +6,7 @@ This module handles target-specific write operations for SCST configuration.
 import os
 import time
 import logging
-from typing import Dict, Any, TYPE_CHECKING
+from typing import Dict, Any, Optional, TYPE_CHECKING
 
 from ..sysfs import SCSTSysfs
 from ..exceptions import SCSTError
@@ -117,6 +117,7 @@ class TargetWriter:
         # Get mgmt interface info to identify special attributes
         mgmt_info = self.config_reader._get_target_mgmt_info(driver_name)
         attrs_to_update = {}
+        attrs_to_remove = []
 
         # Find attributes that need updating
         for attr_name, desired_value in desired_attrs.items():
@@ -134,6 +135,22 @@ class TargetWriter:
             self.logger.debug(
                 f"Target attribute '{attr_name}' needs update: current='{current_value}' -> desired='{desired_value}'")
 
+        # Find mgmt-managed attributes that need to be removed
+        # ONLY check attributes that are in mgmt_info['target_attributes'] - these are the only
+        # ones we can actually remove. All other attributes are read-only or system-managed.
+        for attr_name in mgmt_info['target_attributes']:
+            if attr_name not in desired_attrs and current_attrs.get(attr_name) is not None:
+                attrs_to_remove.append(attr_name)
+                current_val = current_attrs.get(attr_name)
+                self.logger.debug(
+                    f"Target mgmt attribute '{attr_name}' needs removal: current='{current_val}' -> not in desired")
+
+        # Remove mgmt attributes that should no longer exist
+        if attrs_to_remove:
+            self.logger.debug(f"Removing {len(attrs_to_remove)} target mgmt attributes for {driver_name}/{target_name}")
+            for attr_name in attrs_to_remove:
+                self._remove_target_mgmt_attribute(driver_name, target_name, attr_name)
+
         # Update the attributes that differ
         if attrs_to_update:
             self.logger.debug(f"Updating {len(attrs_to_update)} target attributes for {driver_name}/{target_name}")
@@ -146,7 +163,7 @@ class TargetWriter:
 
             # Set the new values
             self.set_target_attributes(driver_name, target_name, attrs_to_update)
-        else:
+        elif not attrs_to_remove:
             self.logger.debug(f"No target attribute updates needed for {driver_name}/{target_name}")
 
     def _remove_target_mgmt_attribute(self, driver_name: str, target_name: str, attr_name: str) -> None:
@@ -614,9 +631,11 @@ class TargetWriter:
         return entity_exists(target_path)
 
     def _target_config_differs(self, desired_attrs: Dict[str, str],
-                               current_attrs: Dict[str, str]) -> bool:
+                               current_attrs: Dict[str, str],
+                               removable_attrs: Optional[set] = None) -> bool:
         """Compare desired target configuration with current configuration"""
-        return attrs_config_differs(desired_attrs, current_attrs, entity_type="Target")
+        return attrs_config_differs(desired_attrs, current_attrs, removable_attrs=removable_attrs,
+                                    entity_type="Target")
 
     def _lun_exists(self, driver: str, target: str, lun_number: str) -> bool:
         """Check if a LUN already exists for a target"""
@@ -705,17 +724,21 @@ class TargetWriter:
 
                 # Existing target: perform incremental updates (attributes, LUNs, groups)
                 if self._target_exists(driver_name, target_name):
-                    # Performance optimization: only read attributes we need to compare
-                    config_attrs_to_check = set(target_attrs.keys())
+                    # Get mgmt info to identify removable attributes
+                    mgmt_info = self.config_reader._get_target_mgmt_info(driver_name)
+
+                    # Read attributes: config attrs + mgmt-managed attrs (to check for removal)
+                    config_attrs_to_check = set(target_attrs.keys()) | mgmt_info['target_attributes']
                     existing_target_attrs = self.config_reader._get_current_target_attrs(
                         driver_name, target_name, config_attrs_to_check)
 
                     # Filter out creation-time parameters (can't be changed post-creation)
                     # Examples: InitiatorName, TargetName for iSCSI targets
-                    mgmt_info = self.config_reader._get_target_mgmt_info(driver_name)
                     settable_target_attrs = {k: v for k, v in target_attrs.items()
                                              if k not in mgmt_info['create_params']}
-                    attrs_differ = self._target_config_differs(settable_target_attrs, existing_target_attrs)
+                    attrs_differ = self._target_config_differs(
+                        settable_target_attrs, existing_target_attrs,
+                        removable_attrs=mgmt_info['target_attributes'])
 
                     # Phase 1: Update target attributes if they've changed
                     if attrs_differ:
