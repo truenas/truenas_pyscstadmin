@@ -840,13 +840,20 @@ class TargetWriter:
                     # Get device assigned to this LUN number
                     device = self.config_reader._get_current_lun_device('copy_manager', 'copy_manager_tgt', lun_item)
 
-                    # Check if this device should be at a different LUN number
-                    if device in explicit_devices and explicit_devices[device] != lun_item:
-                        # Duplicate found: same device at wrong LUN number
-                        # Keep the explicit assignment, remove the auto-created one
+                    if device in explicit_devices:
+                        # Check if this device should be at a different LUN number
+                        if explicit_devices[device] != lun_item:
+                            # Duplicate found: same device at wrong LUN number
+                            # Keep the explicit assignment, remove the auto-created one
+                            luns_to_remove.append(lun_item)
+                            expected = explicit_devices[device]
+                            self.logger.debug(
+                                f"Found duplicate LUN {lun_item} for device {device} (expected: {expected})")
+                    else:
+                        # Device NOT in explicit config - remove it (Perl behavior for copy_manager)
+                        # copy_manager auto-creates LUNs, but we only keep explicitly configured ones
                         luns_to_remove.append(lun_item)
-                        expected = explicit_devices[device]
-                        self.logger.debug(f"Found duplicate LUN {lun_item} for device {device} (expected: {expected})")
+                        self.logger.debug(f"Found LUN {lun_item} for device {device} not in config, removing")
 
             # Clean up duplicates using SCST management interface
             if luns_to_remove:
@@ -941,6 +948,25 @@ class TargetWriter:
             if not device:
                 continue  # Skip empty device assignments
 
+            # Special handling for copy_manager: check if device already has a LUN assigned elsewhere
+            if driver == 'copy_manager' and target == 'copy_manager_tgt':
+                # Find if this device already has a LUN assignment (from auto-creation)
+                luns_dir = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/luns"
+                if os.path.exists(luns_dir):
+                    for existing_lun in os.listdir(luns_dir):
+                        if existing_lun != self.sysfs.MGMT_INTERFACE and os.path.isdir(f"{luns_dir}/{existing_lun}"):
+                            existing_device = self.config_reader._get_current_lun_device(driver, target, existing_lun)
+                            if existing_device == device and existing_lun != lun_number:
+                                # Device already assigned to different LUN, remove it first
+                                self.logger.debug(
+                                    f"Device {device} already at LUN {existing_lun}, removing before "
+                                    f"assigning to LUN {lun_number}")
+                                try:
+                                    self.sysfs.write_sysfs(luns_path, f"del {existing_lun}")
+                                except SCSTError as e:
+                                    self.logger.warning(f"Failed to remove existing LUN {existing_lun}: {e}")
+                                break
+
             # Optimization: check if LUN assignment already correct (avoid unnecessary operations)
             if self._lun_exists(driver, target, lun_number):
                 current_device = self.config_reader._get_current_lun_device(driver, target, lun_number)
@@ -949,6 +975,16 @@ class TargetWriter:
                     self.logger.debug(
                         f"LUN {lun_number} for {driver}/{target} already assigned to correct device {device}, skipping")
                     continue
+                elif current_device == "":
+                    # LUN exists but device symlink is broken/stale - must recreate assignment
+                    self.logger.debug(
+                        f"LUN {lun_number} for {driver}/{target} has broken device symlink, removing and recreating")
+                    try:
+                        # Management command: "del {lun_number}"
+                        self.sysfs.write_sysfs(luns_path, f"del {lun_number}")
+                    except SCSTError as e:
+                        self.logger.warning(f"Failed to remove existing LUN {lun_number} for {driver}/{target}: {e}")
+                        # Continue anyway - the new assignment might still work
                 else:
                     # LUN exists but points to wrong device - must recreate assignment
                     self.logger.debug(
