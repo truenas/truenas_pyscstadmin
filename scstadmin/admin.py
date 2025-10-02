@@ -47,7 +47,7 @@ class SCSTAdmin:
 
     # Known driver attributes that should not be treated as targets during cleanup
     DRIVER_ATTRIBUTES = {
-        'copy_manager': {'copy_manager_tgt', 'dif_capabilities', 'allow_not_connected_copy'},
+        'copy_manager': {'dif_capabilities', 'allow_not_connected_copy'},
         'iscsi': {'link_local', 'isns_entity_name', 'internal_portal', 'trace_level',
                   'open_state', 'version', 'iSNSServer', 'enabled', 'mgmt'}
     }
@@ -364,7 +364,14 @@ class SCSTAdmin:
                         if has_luns or has_ini_groups or has_sessions:
                             # Clear dynamic target attributes before removing target
                             self._clear_target_dynamic_attributes(driver, item)
-                            self.target_writer.remove_target(driver, item)
+
+                            # copy_manager_tgt is a built-in permanent target - just clear its LUNs
+                            if driver == 'copy_manager' and item == 'copy_manager_tgt':
+                                luns_mgmt = f"{item_path}/luns/mgmt"
+                                if self.sysfs.valid_path(luns_mgmt):
+                                    self.sysfs.write_sysfs(luns_mgmt, "clear")
+                            else:
+                                self.target_writer.remove_target(driver, item)
                         else:
                             self.logger.debug(f"Skipping '{driver}/{item}' - not a target directory")
 
