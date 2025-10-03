@@ -369,7 +369,11 @@ class SCSTAdmin:
                             if driver == 'copy_manager' and item == 'copy_manager_tgt':
                                 luns_mgmt = f"{item_path}/luns/mgmt"
                                 if self.sysfs.valid_path(luns_mgmt):
-                                    self.sysfs.write_sysfs(luns_mgmt, "clear")
+                                    try:
+                                        self.sysfs.write_sysfs(luns_mgmt, "clear")
+                                    except SCSTError as e:
+                                        self.logger.warning(
+                                            f"Failed to clear copy_manager_tgt LUNs: {e}")
                             else:
                                 self.target_writer.remove_target(driver, item)
                         else:

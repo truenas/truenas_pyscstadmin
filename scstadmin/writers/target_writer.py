@@ -943,6 +943,18 @@ class TargetWriter:
         # Target LUN management path: /sys/.../targets/{driver}/{target}/luns/mgmt
         luns_path = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/luns/mgmt"
 
+        # Pre-build mapping for copy_manager duplicate detection (performance optimization)
+        # Build once before loop instead of for each LUN to avoid O(n²) complexity
+        existing_lun_map = {}  # {device: lun_number}
+        if driver == 'copy_manager' and target == 'copy_manager_tgt':
+            luns_dir = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/luns"
+            if os.path.exists(luns_dir):
+                for existing_lun in os.listdir(luns_dir):
+                    if existing_lun != self.sysfs.MGMT_INTERFACE and os.path.isdir(f"{luns_dir}/{existing_lun}"):
+                        existing_device = self.config_reader._get_current_lun_device(driver, target, existing_lun)
+                        if existing_device:
+                            existing_lun_map[existing_device] = existing_lun
+
         for lun_number, lun_config in target_config.luns.items():
             device = lun_config.device  # LunConfig object
             if not device:
@@ -950,22 +962,18 @@ class TargetWriter:
 
             # Special handling for copy_manager: check if device already has a LUN assigned elsewhere
             if driver == 'copy_manager' and target == 'copy_manager_tgt':
-                # Find if this device already has a LUN assignment (from auto-creation)
-                luns_dir = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/luns"
-                if os.path.exists(luns_dir):
-                    for existing_lun in os.listdir(luns_dir):
-                        if existing_lun != self.sysfs.MGMT_INTERFACE and os.path.isdir(f"{luns_dir}/{existing_lun}"):
-                            existing_device = self.config_reader._get_current_lun_device(driver, target, existing_lun)
-                            if existing_device == device and existing_lun != lun_number:
-                                # Device already assigned to different LUN, remove it first
-                                self.logger.debug(
-                                    f"Device {device} already at LUN {existing_lun}, removing before "
-                                    f"assigning to LUN {lun_number}")
-                                try:
-                                    self.sysfs.write_sysfs(luns_path, f"del {existing_lun}")
-                                except SCSTError as e:
-                                    self.logger.warning(f"Failed to remove existing LUN {existing_lun}: {e}")
-                                break
+                existing_lun = existing_lun_map.get(device)
+                if existing_lun and existing_lun != lun_number:
+                    # Device already assigned to different LUN, remove it first
+                    self.logger.debug(
+                        f"Device {device} already at LUN {existing_lun}, removing before "
+                        f"assigning to LUN {lun_number}")
+                    try:
+                        self.sysfs.write_sysfs(luns_path, f"del {existing_lun}")
+                        # Update map since we removed it
+                        del existing_lun_map[device]
+                    except SCSTError as e:
+                        self.logger.warning(f"Failed to remove existing LUN {existing_lun}: {e}")
 
             # Optimization: check if LUN assignment already correct (avoid unnecessary operations)
             if self._lun_exists(driver, target, lun_number):
