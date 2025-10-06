@@ -750,8 +750,10 @@ class TargetWriter:
                     # Three types of LUN/access assignments that can change independently:
                     direct_luns_differ = self._direct_lun_assignments_differ(driver_name, target_name,
                                                                              target_config)  # Target-level LUNs
+
                     group_luns_differ = self._group_lun_assignments_differ(driver_name, target_name,
                                                                            target_config)  # Group-specific LUNs
+
                     groups_differ = self._group_assignments_differ(driver_name, target_name,
                                                                    target_config)  # Group membership
 
@@ -943,9 +945,11 @@ class TargetWriter:
         # Target LUN management path: /sys/.../targets/{driver}/{target}/luns/mgmt
         luns_path = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/luns/mgmt"
 
-        # Pre-build mapping for copy_manager duplicate detection (performance optimization)
-        # Build once before loop instead of for each LUN to avoid O(n²) complexity
+        # For copy_manager: pre-build mappings to avoid O(n^2) complexity during duplicate detection
+        # existing_lun_map: tracks which LUN each device is currently assigned to
+        # current_lun_devices: enables fast lookup of current device assignments without sysfs reads
         existing_lun_map = {}  # {device: lun_number}
+        current_lun_devices = {}  # {lun_number: device}
         if driver == 'copy_manager' and target == 'copy_manager_tgt':
             luns_dir = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/luns"
             if os.path.exists(luns_dir):
@@ -954,6 +958,11 @@ class TargetWriter:
                         existing_device = self.config_reader._get_current_lun_device(driver, target, existing_lun)
                         if existing_device:
                             existing_lun_map[existing_device] = existing_lun
+                            current_lun_devices[existing_lun] = existing_device
+
+        # Cache LUN create params lookup - same for all LUNs with same driver/target (performance)
+        # This avoids reading mgmt file 100 times for 100 LUNs
+        lun_create_params_cache = {}
 
         for lun_number, lun_config in target_config.luns.items():
             device = lun_config.device  # LunConfig object
@@ -970,14 +979,21 @@ class TargetWriter:
                         f"assigning to LUN {lun_number}")
                     try:
                         self.sysfs.write_sysfs(luns_path, f"del {existing_lun}")
-                        # Update map since we removed it
+                        # Update maps since we removed it
                         del existing_lun_map[device]
+                        if existing_lun in current_lun_devices:
+                            del current_lun_devices[existing_lun]
                     except SCSTError as e:
                         self.logger.warning(f"Failed to remove existing LUN {existing_lun}: {e}")
 
             # Optimization: check if LUN assignment already correct (avoid unnecessary operations)
-            if self._lun_exists(driver, target, lun_number):
-                current_device = self.config_reader._get_current_lun_device(driver, target, lun_number)
+            lun_exists = self._lun_exists(driver, target, lun_number)
+            if lun_exists:
+                # For copy_manager, use cached device mapping; otherwise read from sysfs
+                if driver == 'copy_manager' and target == 'copy_manager_tgt':
+                    current_device = current_lun_devices.get(lun_number, "")
+                else:
+                    current_device = self.config_reader._get_current_lun_device(driver, target, lun_number)
                 if current_device == device:
                     # LUN already correctly assigned, skip this LUN
                     self.logger.debug(
@@ -1007,7 +1023,14 @@ class TargetWriter:
 
             # Separate creation-time vs post-creation LUN parameters
             # Some attributes must be set during LUN creation, others can be set afterward
-            lun_create_params = self.config_reader._get_lun_create_params(driver, target, lun_config.attributes)
+            # Use cached create params if available (same for all LUNs with same driver/target)
+            if not lun_create_params_cache:
+                lun_create_params_cache['params'] = self.config_reader._get_lun_create_params(
+                    driver, target, lun_config.attributes)
+
+            # Filter for this LUN's specific create params
+            lun_create_params = {k: v for k, v in lun_config.attributes.items()
+                                 if k in lun_create_params_cache.get('params', {})}
             lun_post_params = {k: v for k, v in lun_config.attributes.items()
                                if k not in lun_create_params}
 
