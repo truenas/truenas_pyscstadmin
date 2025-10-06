@@ -98,7 +98,7 @@ class SCSTSysfs:
 
             # Clean up data representation for logging
             data_repr = repr(data) if '\n' in data or not data.strip() else data
-            self.logger.debug(f"Writing {data_repr} to {path}")
+            self.logger.debug("Writing %s to %s", data_repr, path)
 
             with open(path, 'w') as f:
                 f.write(data)
@@ -245,5 +245,5 @@ class SCSTSysfs:
             self.logger.debug(success_msg)
             return True
         except SCSTError as e:
-            self.logger.warning(f"{error_msg}: {e}")
+            self.logger.warning("%s: %s", error_msg, e)
             return False

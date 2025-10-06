@@ -101,21 +101,21 @@ class SCSTModuleManager:
                 timeout=30
             )
             if result.returncode == 0:
-                self.logger.info(f"Successfully loaded module: {module_name}")
+                self.logger.info("Successfully loaded module: %s", module_name)
                 return True
             else:
                 # Don't treat optional module failures as errors
                 if module_name in SCSTConstants.ISCSI_OPT_MODULES or module_name in SCSTConstants.ISCSI_X86_MODULES:
-                    self.logger.debug(f"Optional module {module_name} could not be loaded: {result.stderr}")
+                    self.logger.debug("Optional module %s could not be loaded: %s", module_name, result.stderr)
                     return True  # Continue without optional modules
                 else:
-                    self.logger.error(f"Failed to load required module {module_name}: {result.stderr}")
+                    self.logger.error("Failed to load required module %s: %s", module_name, result.stderr)
                     return False
         except subprocess.TimeoutExpired:
-            self.logger.error(f"Timeout loading module: {module_name}")
+            self.logger.error("Timeout loading module: %s", module_name)
             return False
         except Exception as e:
-            self.logger.error(f"Error loading module {module_name}: {e}")
+            self.logger.error("Error loading module %s: %s", module_name, e)
             return False
 
     def ensure_required_modules_loaded(self, config: SCSTConfig) -> None:
@@ -134,7 +134,7 @@ class SCSTModuleManager:
         required_modules = self.determine_required_modules(config)
         failed_modules = []
 
-        self.logger.info(f"Required modules for configuration: {sorted(required_modules)}")
+        self.logger.info("Required modules for configuration: %s", sorted(required_modules))
 
         for module in required_modules:
             if not self.is_module_loaded(module):
@@ -143,7 +143,7 @@ class SCSTModuleManager:
                     if module not in SCSTConstants.ISCSI_OPT_MODULES and module not in SCSTConstants.ISCSI_X86_MODULES:
                         failed_modules.append(module)
             else:
-                self.logger.debug(f"Module already loaded: {module}")
+                self.logger.debug("Module already loaded: %s", module)
 
         if failed_modules:
             raise SCSTError(f"Failed to load required modules: {', '.join(failed_modules)}")

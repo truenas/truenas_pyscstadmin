@@ -89,10 +89,10 @@ class SCSTAdmin:
             if self.suspend_count == 0:
                 suspend_path = f"{self.sysfs.SCST_ROOT}/suspend"
                 self.sysfs.write_sysfs(suspend_path, str(suspend_value), check_result=False)
-                self.logger.debug(f"SCST IO suspended with value {suspend_value}")
+                self.logger.debug("SCST IO suspended with value %s", suspend_value)
             self.suspend_count += 1
         except SCSTError as e:
-            self.logger.warning(f"Failed to suspend SCST IO: {e}")
+            self.logger.warning("Failed to suspend SCST IO: %s", e)
             raise
 
     def resume_scst_io(self) -> None:
@@ -105,7 +105,7 @@ class SCSTAdmin:
                     self.sysfs.write_sysfs(suspend_path, "-1", check_result=False)
                     self.logger.debug("SCST IO resumed")
         except SCSTError as e:
-            self.logger.warning(f"Failed to resume SCST IO: {e}")
+            self.logger.warning("Failed to resume SCST IO: %s", e)
             raise
 
     def apply_configuration(self, config: SCSTConfig, suspend: int = None) -> None:
@@ -180,7 +180,7 @@ class SCSTAdmin:
             self.logger.info("Configuration applied successfully")
 
         except Exception as e:
-            self.logger.error(f"Configuration application failed: {e}")
+            self.logger.error("Configuration application failed: %s", e)
             raise
         finally:
             # Resume SCST IO if it was suspended
@@ -226,7 +226,7 @@ class SCSTAdmin:
                 if self.sysfs.valid_path(attr_path):
                     current_value = self.sysfs.read_sysfs_attribute(attr_path)
                     if current_value == attr_value:
-                        self.logger.debug(f"SCST attribute {attr_name} already set to '{attr_value}', skipping")
+                        self.logger.debug("SCST attribute %s already set to '%s', skipping", attr_name, attr_value)
                         continue
 
                 self.sysfs.write_sysfs(
@@ -350,7 +350,7 @@ class SCSTAdmin:
                 for item in self.sysfs.list_directory(driver_path):
                     # Skip known driver attributes (don't try to reset them)
                     if item in driver_attrs:
-                        self.logger.debug(f"Skipping driver attribute '{driver}/{item}'")
+                        self.logger.debug("Skipping driver attribute '%s/%s'", driver, item)
                         continue
 
                     # Only process directories that are actual targets
@@ -373,11 +373,11 @@ class SCSTAdmin:
                                         self.sysfs.write_sysfs(luns_mgmt, "clear")
                                     except SCSTError as e:
                                         self.logger.warning(
-                                            f"Failed to clear copy_manager_tgt LUNs: {e}")
+                                            "Failed to clear copy_manager_tgt LUNs: %s", e)
                             else:
                                 self.target_writer.remove_target(driver, item)
                         else:
-                            self.logger.debug(f"Skipping '{driver}/{item}' - not a target directory")
+                            self.logger.debug("Skipping '%s/%s' - not a target directory", driver, item)
 
                 # Clear driver dynamic attributes after all targets removed
                 self._clear_driver_dynamic_attributes(driver)
@@ -399,7 +399,7 @@ class SCSTAdmin:
             self.logger.info("SCST configuration cleared successfully")
 
         except Exception as e:
-            self.logger.error(f"Failed to clear configuration: {e}")
+            self.logger.error("Failed to clear configuration: %s", e)
             raise
         finally:
             # Resume SCST IO if it was suspended
@@ -420,7 +420,7 @@ class SCSTAdmin:
             # Additional validation logic would go here
             return True
         except Exception as e:
-            self.logger.error(f"Configuration check failed: {e}")
+            self.logger.error("Configuration check failed: %s", e)
             return False
 
     def _clear_target_dynamic_attributes(self, driver: str, target: str) -> None:
