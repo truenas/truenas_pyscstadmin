@@ -6,6 +6,7 @@ This module handles target-specific write operations for SCST configuration.
 import os
 import time
 import logging
+from pathlib import Path
 from typing import Dict, Any, Optional, TYPE_CHECKING
 
 from ..sysfs import SCSTSysfs
@@ -951,14 +952,17 @@ class TargetWriter:
         existing_lun_map = {}  # {device: lun_number}
         current_lun_devices = {}  # {lun_number: device}
         if driver == 'copy_manager' and target == 'copy_manager_tgt':
-            luns_dir = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/luns"
-            if os.path.exists(luns_dir):
-                for existing_lun in os.listdir(luns_dir):
-                    if existing_lun != self.sysfs.MGMT_INTERFACE and os.path.isdir(f"{luns_dir}/{existing_lun}"):
+            luns_dir = Path(self.sysfs.SCST_TARGETS) / driver / target / "luns"
+            try:
+                for lun_path in luns_dir.iterdir():
+                    existing_lun = lun_path.name
+                    if existing_lun != self.sysfs.MGMT_INTERFACE and lun_path.is_dir():
                         existing_device = self.config_reader._get_current_lun_device(driver, target, existing_lun)
                         if existing_device:
                             existing_lun_map[existing_device] = existing_lun
                             current_lun_devices[existing_lun] = existing_device
+            except FileNotFoundError:
+                pass  # Directory doesn't exist, no existing LUNs to map
 
         # Cache LUN create params lookup - same for all LUNs with same driver/target (performance)
         # This avoids reading mgmt file 100 times for 100 LUNs
