@@ -43,7 +43,7 @@ class DeviceReader:
                 handler_type = os.path.basename(target)
                 return handler_type
         except (OSError, IOError) as e:
-            self.logger.warning(f"Failed to read handler type for device '{device_name}': {e}")
+            self.logger.warning("Failed to read handler type for device '%s': %s", device_name, e)
         return None
 
     def _create_minimal_device_config(self, device_name: str, handler_type: str) -> Optional['DeviceConfig']:
@@ -61,10 +61,10 @@ class DeviceReader:
             minimal_attrs = {'filename': ''}  # Required field for all device types
             device_config = create_device_config(device_name, handler_type, minimal_attrs)
             if device_config is None:
-                self.logger.error(f"Unknown handler type '{handler_type}' for device '{device_name}', skipping")
+                self.logger.error("Unknown handler type '%s' for device '%s', skipping", handler_type, device_name)
             return device_config
         except (ValueError, TypeError) as e:
-            self.logger.error(f"Failed to create DeviceConfig for '{device_name}' (handler: {handler_type}): {e}")
+            self.logger.error("Failed to create DeviceConfig for '%s' (handler: %s): %s", device_name, handler_type, e)
             return None
 
     def _safe_read_attribute(self, attr_path: str) -> Optional[str]:

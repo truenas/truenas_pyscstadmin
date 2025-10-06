@@ -76,7 +76,7 @@ class SCSTConfigParser:
         Raises:
             SCSTError: On file access errors or parsing failures
         """
-        self.logger.info(f"Parsing configuration file: {filename}")
+        self.logger.info("Parsing configuration file: %s", filename)
         try:
             with open(filename, 'r') as f:
                 content = f.read()
@@ -117,7 +117,7 @@ class SCSTConfigParser:
             self._parse_blocks(lines, config)
 
         except Exception as e:
-            self.logger.error(f"Configuration parsing failed: {e}")
+            self.logger.error("Configuration parsing failed: %s", e)
             self.logger.error("Failed while parsing configuration content")
             raise SCSTError(f"Configuration parsing error: {e}")
 
@@ -155,10 +155,10 @@ class SCSTConfigParser:
                         config.scst_attributes[key] = value
                         i += 1
                     else:
-                        self.logger.warning(f"Ignoring unrecognized line {i+1}: '{line}'")
+                        self.logger.warning("Ignoring unrecognized line %s: '%s'", i+1, line)
                         i += 1
                 else:
-                    self.logger.warning(f"Ignoring unrecognized line {i+1}: '{line}'")
+                    self.logger.warning("Ignoring unrecognized line %s: '%s'", i+1, line)
                     i += 1
             except SCSTError:
                 raise  # Re-raise SCSTError as-is
@@ -500,7 +500,7 @@ class SCSTConfigParser:
 
         if content_start == content_end:
             # Empty block - no braces found, treat as target with no configuration
-            self.logger.debug(f"  No opening brace found for TARGET {target_name}")
+            self.logger.debug("  No opening brace found for TARGET %s", target_name)
             target_config = TargetConfig.from_config_dict(target_name, target_config_dict)
             targets[target_name] = target_config
             return content_end + 1  # +1 to skip closing brace
@@ -705,7 +705,7 @@ class SCSTConfigParser:
 
         if content_start == content_end:
             # Empty device group block
-            self.logger.warning(f"Expected opening brace for device group {group_name}")
+            self.logger.warning("Expected opening brace for device group %s", group_name)
             config.device_groups[group_name] = DeviceGroupConfig.from_config_dict(group_name, group_config)
             return content_end + 1  # +1 to skip closing brace
 
@@ -761,7 +761,7 @@ class SCSTConfigParser:
 
         if content_start == content_end:
             # Empty target group block
-            self.logger.warning(f"Expected opening brace for target group {group_name}")
+            self.logger.warning("Expected opening brace for target group %s", group_name)
             target_groups[group_name] = group_config
             return content_end + 1  # +1 to skip closing brace
 

@@ -85,9 +85,9 @@ class TestDeviceWriter:
 
         # Assert: Verify debug logging occurred for each attribute
         expected_log_calls = [
-            call("Set device attribute test_disk.blocksize = 4096"),
-            call("Set device attribute test_disk.readonly = 1"),
-            call("Set device attribute test_disk.thin_provisioned = 0")
+            call("Set device attribute %s.%s = %s", "test_disk", "blocksize", "4096"),
+            call("Set device attribute %s.%s = %s", "test_disk", "readonly", "1"),
+            call("Set device attribute %s.%s = %s", "test_disk", "thin_provisioned", "0")
         ]
         mock_logger.debug.assert_has_calls(expected_log_calls, any_order=True)
         assert mock_logger.debug.call_count == 3
@@ -130,15 +130,19 @@ class TestDeviceWriter:
 
         # Assert: Verify debug logs for successful attributes
         successful_debug_calls = [
-            call("Set device attribute test_disk.blocksize = 4096"),
-            call("Set device attribute test_disk.thin_provisioned = 0")
+            call("Set device attribute %s.%s = %s", "test_disk", "blocksize", "4096"),
+            call("Set device attribute %s.%s = %s", "test_disk", "thin_provisioned", "0")
         ]
         mock_logger.debug.assert_has_calls(successful_debug_calls, any_order=True)
 
         # Assert: Verify warning log for failed attribute
-        mock_logger.warning.assert_called_once_with(
-            "Failed to set device attribute test_disk.readonly: Permission denied for readonly attribute"
-        )
+        # Note: The logger receives the exception object, not just the message string
+        actual_call = mock_logger.warning.call_args
+        assert actual_call[0][0] == "Failed to set device attribute %s.%s: %s"
+        assert actual_call[0][1] == "test_disk"
+        assert actual_call[0][2] == "readonly"
+        assert isinstance(actual_call[0][3], SCSTError)
+        assert str(actual_call[0][3]) == "Permission denied for readonly attribute"
 
     def test_set_device_attributes_empty_attributes(self, device_writer, mock_sysfs, mock_logger):
         """
@@ -265,9 +269,12 @@ class TestDeviceWriter:
         )
 
         # Assert: Verify error was logged with proper context
-        mock_logger.warning.assert_called_once_with(
-            f"Failed to remove existing device test_disk: {error_message}"
-        )
+        # Note: The logger receives the exception object, not just the message string
+        actual_call = mock_logger.warning.call_args
+        assert actual_call[0][0] == "Failed to remove existing device %s: %s"
+        assert actual_call[0][1] == "test_disk"
+        assert isinstance(actual_call[0][2], SCSTError)
+        assert str(actual_call[0][2]) == error_message
 
     def test_remove_device_by_name_success(self, device_writer, mock_sysfs, mock_logger):
         """
@@ -373,9 +380,12 @@ class TestDeviceWriter:
         device_writer.remove_device_by_name(device_name)
 
         # Assert: Verify error was logged with device context
-        mock_logger.warning.assert_called_once_with(
-            "Failed to remove device test_disk: Permission denied"
-        )
+        # Note: The logger receives the exception object, not just the message string
+        actual_call = mock_logger.warning.call_args
+        assert actual_call[0][0] == "Failed to remove device %s: %s"
+        assert actual_call[0][1] == "test_disk"
+        assert isinstance(actual_call[0][2], SCSTError)
+        assert str(actual_call[0][2]) == "Permission denied"
 
     def test_create_device_with_creation_params_and_attributes(self, device_writer, mock_sysfs):
         """
@@ -771,10 +781,13 @@ class TestDeviceWriter:
         assert device_writer.create_device.call_count == 2
 
         # Assert: Verify debug logging
-        mock_logger.debug.assert_any_call("Applying device configurations. Found 4 devices")
-        mock_logger.debug.assert_any_call("Device skip_device already exists with matching config, skipping")
-        mock_logger.debug.assert_any_call("Device update_device exists, updating post-creation attributes only")
-        mock_logger.debug.assert_any_call("Device recreate_device creation attributes differ, removing and recreating")
+        mock_logger.debug.assert_any_call("Applying device configurations. Found %s devices", 4)
+        mock_logger.debug.assert_any_call("Device %s already exists with matching config, skipping",
+                                          "skip_device")
+        mock_logger.debug.assert_any_call("Device %s exists, updating post-creation attributes only",
+                                          "update_device")
+        mock_logger.debug.assert_any_call("Device %s creation attributes differ, removing and recreating",
+                                          "recreate_device")
 
 
 class TestTargetWriter:
@@ -865,13 +878,16 @@ class TestTargetWriter:
         # Assert: Verify debug logging for mgmt operations
         assert mock_logger.debug.call_count == 3
         mock_logger.debug.assert_any_call(
-            "Setting target mgmt attribute iscsi/iqn.2023-01.example.com:test.IncomingUser = user1 secret123"
+            "Setting target mgmt attribute %s/%s.%s = %s",
+            "iscsi", "iqn.2023-01.example.com:test", "IncomingUser", "user1 secret123"
         )
         mock_logger.debug.assert_any_call(
-            "Setting target mgmt attribute iscsi/iqn.2023-01.example.com:test.IncomingUser = user2 secret456"
+            "Setting target mgmt attribute %s/%s.%s = %s",
+            "iscsi", "iqn.2023-01.example.com:test", "IncomingUser", "user2 secret456"
         )
         mock_logger.debug.assert_any_call(
-            "Setting target mgmt attribute iscsi/iqn.2023-01.example.com:test.OutgoingUser = outuser outpass"
+            "Setting target mgmt attribute %s/%s.%s = %s",
+            "iscsi", "iqn.2023-01.example.com:test", "OutgoingUser", "outuser outpass"
         )
 
     def test_set_target_attributes_direct_sysfs(self, target_writer, mock_sysfs, mock_config_reader, mock_logger):
@@ -963,7 +979,8 @@ class TestTargetWriter:
 
         # Assert: Verify debug logging only for mgmt attribute
         mock_logger.debug.assert_called_once()
-        assert "IncomingUser" in mock_logger.debug.call_args[0][0]
+        # With %s format, attribute name is in args[3] (0=format, 1=driver, 2=target, 3=attr_name, 4=value)
+        assert mock_logger.debug.call_args[0][3] == "IncomingUser"
 
     def test_set_target_attributes_sysfs_failures(self, target_writer, mock_sysfs, mock_config_reader, mock_logger):
         """
@@ -1004,9 +1021,15 @@ class TestTargetWriter:
 
         # Assert: Verify warning was logged for mgmt failure
         mock_logger.warning.assert_called_once()
-        warning_message = mock_logger.warning.call_args[0][0]
-        assert "Failed to set iscsi/iqn.2023-01.example.com:test.IncomingUser=user secret via mgmt" in warning_message
-        assert "Management interface error" in warning_message
+        # With %s format: args are (format_string, driver, target, attr_name, attr_value, exception)
+        actual_call = mock_logger.warning.call_args
+        assert actual_call[0][0] == "Failed to set %s/%s.%s=%s via mgmt: %s"
+        assert actual_call[0][1] == "iscsi"
+        assert actual_call[0][2] == "iqn.2023-01.example.com:test"
+        assert actual_call[0][3] == "IncomingUser"
+        assert actual_call[0][4] == "user secret"
+        assert isinstance(actual_call[0][5], SCSTError)
+        assert str(actual_call[0][5]) == "Management interface error"
 
     def test_set_target_attributes_empty_attributes(self, target_writer, mock_sysfs, mock_config_reader, mock_logger):
         """
@@ -1129,9 +1152,13 @@ class TestTargetWriter:
             target_writer.remove_target(driver_name, target_name)
 
             # Assert: Verify error was logged with proper context
-            mock_logger.warning.assert_called_with(
-                "Failed to remove target iscsi/iqn.2023-01.example.com:test: Target is in use"
-            )
+            # Note: The logger receives the exception object, not just the message string
+            actual_call = mock_logger.warning.call_args
+            assert actual_call[0][0] == "Failed to remove target %s/%s: %s"
+            assert actual_call[0][1] == "iscsi"
+            assert actual_call[0][2] == "iqn.2023-01.example.com:test"
+            assert isinstance(actual_call[0][3], SCSTError)
+            assert str(actual_call[0][3]) == "Target is in use"
 
             # Assert: Verify helper methods were still called
             mock_disable.assert_called_once_with(driver_name, target_name)
@@ -1200,13 +1227,16 @@ class TestTargetWriter:
 
         # Assert: Verify debug logging for attribute comparisons
         mock_logger.debug.assert_any_call(
-            "Target attribute 'IncomingUser' needs update: current='olduser oldsecret' -> desired='newuser newsecret'"
+            "Target attribute '%s' needs update: current='%s' -> desired='%s'",
+            "IncomingUser", "olduser oldsecret", "newuser newsecret"
         )
         mock_logger.debug.assert_any_call(
-            "Target attribute 'HeaderDigest' needs update: current='None' -> desired='CRC32C'"
+            "Target attribute '%s' needs update: current='%s' -> desired='%s'",
+            "HeaderDigest", "None", "CRC32C"
         )
         mock_logger.debug.assert_any_call(
-            "Updating 2 target attributes for iscsi/iqn.2023-01.example.com:test"
+            "Updating %s target attributes for %s/%s",
+            2, "iscsi", "iqn.2023-01.example.com:test"
         )
 
     def test_apply_config_assignments_comprehensive_workflow(self,
@@ -1315,8 +1345,8 @@ class TestTargetWriter:
         target_writer.apply_group_assignments.assert_called_with("iscsi", "new_target", new_target)
 
         # Assert: Verify debug logging
-        mock_logger.debug.assert_any_call("Target attributes differ for iscsi/existing_target, updating")
-        mock_logger.debug.assert_any_call("Group assignments differ for iscsi/existing_target, updating")
+        mock_logger.debug.assert_any_call("Target attributes differ for %s/%s, updating", "iscsi", "existing_target")
+        mock_logger.debug.assert_any_call("Group assignments differ for %s/%s, updating", "iscsi", "existing_target")
 
     def test_target_exists_true(self, target_writer, mock_sysfs):
         """
@@ -1795,13 +1825,17 @@ class TestTargetWriter:
 
         # Assert: Verify debug logging
         mock_logger.debug.assert_any_call(
-            "Group existing_group for iscsi/iqn.2023-01.example.com:test already exists with matching config, skipping"
+            "Group %s for %s/%s already exists with matching config, skipping",
+            "existing_group", "iscsi", "iqn.2023-01.example.com:test"
         )
         mock_logger.debug.assert_any_call(
-            "Group update_group for iscsi/iqn.2023-01.example.com:test exists but config differs"
+            "Group %s for %s/%s exists but config differs",
+            "update_group", "iscsi", "iqn.2023-01.example.com:test"
         )
-        mock_logger.debug.assert_any_call("Created group update_group for iscsi/iqn.2023-01.example.com:test")
-        mock_logger.debug.assert_any_call("Created group new_group for iscsi/iqn.2023-01.example.com:test")
+        mock_logger.debug.assert_any_call("Created group %s for %s/%s",
+                                          "update_group", "iscsi", "iqn.2023-01.example.com:test")
+        mock_logger.debug.assert_any_call("Created group %s for %s/%s",
+                                          "new_group", "iscsi", "iqn.2023-01.example.com:test")
 
     def test_update_target_groups_comprehensive_workflow(self,
                                                          target_writer,
@@ -1887,14 +1921,16 @@ class TestTargetWriter:
 
         # Assert: Verify debug logging
         expected_debug_calls = [
-            call("Group match_group for iscsi/iqn.2023-01.example.com:test already exists "
-                 "with matching config, skipping"),
-            call("Group update_group for iscsi/iqn.2023-01.example.com:test config differs, "
-                 "updating incrementally"),
-            call("Group new_group for iscsi/iqn.2023-01.example.com:test doesn't exist, creating"),
-            call("Created group new_group for iscsi/iqn.2023-01.example.com:test"),
-            call("Added initiator iqn.example:client1 to group new_group"),
-            call("Added LUN 0 (disk1) to group new_group")
+            call("Group %s for %s/%s already exists with matching config, skipping",
+                 "match_group", "iscsi", "iqn.2023-01.example.com:test"),
+            call("Group %s for %s/%s config differs, updating incrementally",
+                 "update_group", "iscsi", "iqn.2023-01.example.com:test"),
+            call("Group %s for %s/%s doesn't exist, creating",
+                 "new_group", "iscsi", "iqn.2023-01.example.com:test"),
+            call("Created group %s for %s/%s",
+                 "new_group", "iscsi", "iqn.2023-01.example.com:test"),
+            call("Added initiator %s to group %s", "iqn.example:client1", "new_group"),
+            call("Added LUN %s (%s) to group %s", "0", "disk1", "new_group")
         ]
         mock_logger.debug.assert_has_calls(expected_debug_calls, any_order=True)
 
@@ -1989,7 +2025,7 @@ class TestTargetWriter:
         )
 
         # Assert: Verify debug logging for method entry
-        mock_logger.debug.assert_any_call("Updating group storage_clients configuration incrementally")
+        mock_logger.debug.assert_any_call("Updating group %s configuration incrementally", "storage_clients")
 
 
 class TestGroupWriter:
@@ -2225,9 +2261,12 @@ class TestGroupWriter:
         group_writer.remove_device_group(group_name)
 
         # Assert: Verify error was logged with proper context
-        mock_logger.warning.assert_called_once_with(
-            "Failed to remove device group error_group: Device group is in use"
-        )
+        # Note: The logger receives the exception object, not just the message string
+        actual_call = mock_logger.warning.call_args
+        assert actual_call[0][0] == "Failed to remove device group %s: %s"
+        assert actual_call[0][1] == "error_group"
+        assert isinstance(actual_call[0][2], SCSTError)
+        assert str(actual_call[0][2]) == "Device group is in use"
 
         # Assert: Verify removal was attempted
         mock_sysfs.write_sysfs.assert_called_once_with(
@@ -2360,7 +2399,7 @@ class TestGroupWriter:
             mock_sysfs.write_sysfs.assert_not_called()
 
             # Assert: Verify debug log about no changes needed
-            mock_logger.debug.assert_called_with("Device group dg1 membership already correct")
+            mock_logger.debug.assert_called_with("Device group %s membership already correct", "dg1")
 
     def test_set_target_group_target_attributes_success(self, group_writer, mock_sysfs, mock_logger):
         """
@@ -2446,8 +2485,8 @@ class TestGroupWriter:
 
             # Assert: Verify debug log about symlink
             mock_logger.debug.assert_called_once_with(
-                "Target iqn.2023-01.example.com:test is symlink, cannot set attributes - "
-                "SCST will handle this automatically"
+                "Target %s is symlink, cannot set attributes - SCST will handle this automatically",
+                "iqn.2023-01.example.com:test"
             )
 
             # Assert: Verify no sysfs operations
@@ -2622,20 +2661,26 @@ class TestGroupWriter:
         group_writer._update_device_group_devices.assert_called_once_with(group_name, group_config)
 
         # Assert: Verify delegation to target group update method
-        group_writer._update_device_group_target_groups.assert_called_once_with(group_name, group_config)
+        group_writer._update_device_group_target_groups.assert_called_once_with(
+            group_name, group_config)
 
         # Assert: Verify group attribute updates
         expected_write_calls = [
-            call("/sys/kernel/scst_tgt/device_groups/storage_group/some_attr", "value1", check_result=False),
-            call("/sys/kernel/scst_tgt/device_groups/storage_group/another_attr", "value2", check_result=False)
+            call("/sys/kernel/scst_tgt/device_groups/storage_group/some_attr",
+                 "value1", check_result=False),
+            call("/sys/kernel/scst_tgt/device_groups/storage_group/another_attr",
+                 "value2", check_result=False)
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_write_calls, any_order=True)
         assert mock_sysfs.write_sysfs.call_count == 2
 
         # Assert: Verify debug logging
-        mock_logger.debug.assert_any_call("Updating device group storage_group configuration incrementally")
-        mock_logger.debug.assert_any_call("Updated device group attribute storage_group.some_attr = value1")
-        mock_logger.debug.assert_any_call("Updated device group attribute storage_group.another_attr = value2")
+        mock_logger.debug.assert_any_call("Updating device group %s configuration incrementally",
+                                          "storage_group")
+        mock_logger.debug.assert_any_call("Updated device group attribute %s.%s = %s",
+                                          "storage_group", "some_attr", "value1")
+        mock_logger.debug.assert_any_call("Updated device group attribute %s.%s = %s",
+                                          "storage_group", "another_attr", "value2")
 
     def test_update_device_group_target_groups_synchronization(self,
                                                                group_writer,
@@ -2707,10 +2752,14 @@ class TestGroupWriter:
         )
 
         # Assert: Verify debug logging
-        mock_logger.debug.assert_any_call("Updating target groups for device group storage_group")
-        mock_logger.debug.assert_any_call("Removed target group controller_B from device group storage_group")
-        mock_logger.debug.assert_any_call("Creating target group controller_C in device group storage_group")
-        mock_logger.debug.assert_any_call("Updating target group controller_A in device group storage_group")
+        mock_logger.debug.assert_any_call("Updating target groups for device group %s",
+                                          "storage_group")
+        mock_logger.debug.assert_any_call("Removed target group %s from device group %s",
+                                          "controller_B", "storage_group")
+        mock_logger.debug.assert_any_call("Creating target group %s in device group %s",
+                                          "controller_C", "storage_group")
+        mock_logger.debug.assert_any_call("Updating target group %s in device group %s",
+                                          "controller_A", "storage_group")
 
     def test_update_target_group_attributes_with_value_checking(self,
                                                                 group_writer,
@@ -2787,13 +2836,16 @@ class TestGroupWriter:
 
         # Assert: Verify debug logging for value comparisons
         mock_logger.debug.assert_any_call(
-            "Updated target group attribute storage_group.controller_A.group_id: 100 -> 101"
+            "Updated target group attribute %s.%s.%s: %s -> %s",
+            "storage_group", "controller_A", "group_id", "100", "101"
         )
         mock_logger.debug.assert_any_call(
-            "Target group attribute storage_group.controller_A.state already has correct value: active"
+            "Target group attribute %s.%s.%s already has correct value: %s",
+            "storage_group", "controller_A", "state", "active"
         )
         mock_logger.debug.assert_any_call(
-            "Set target group attribute storage_group.controller_A.new_attr = value"
+            "Set target group attribute %s.%s.%s = %s",
+            "storage_group", "controller_A", "new_attr", "value"
         )
 
     def test_update_target_group_targets_with_alua_attributes(self,
@@ -2941,13 +2993,13 @@ class TestGroupWriter:
 
         # Assert: Verify debug logging
         mock_logger.debug.assert_any_call(
-            "Created target group controller_A in device group storage_group"
+            "Created target group %s in device group %s", "controller_A", "storage_group"
         )
         mock_logger.debug.assert_any_call(
-            "Added target iqn.example:test1 to target group controller_A"
+            "Added target %s to target group %s", "iqn.example:test1", "controller_A"
         )
         mock_logger.debug.assert_any_call(
-            "Added target iqn.example:test2 to target group controller_A"
+            "Added target %s to target group %s", "iqn.example:test2", "controller_A"
         )
 
     def test_apply_target_groups_create_and_update_logic(self,
@@ -3011,10 +3063,13 @@ class TestGroupWriter:
         )
 
         # Assert: Verify debug logging
-        mock_logger.debug.assert_any_call("Processing target group 'controller_A' in device group 'storage_group'")
-        mock_logger.debug.assert_any_call("Target group controller_A exists, updating configuration")
-        mock_logger.debug.assert_any_call("Processing target group 'controller_C' in device group 'storage_group'")
-        mock_logger.debug.assert_any_call("Target group controller_C doesn't exist, creating")
+        mock_logger.debug.assert_any_call("Processing target group '%s' in device group '%s'",
+                                          "controller_A", "storage_group")
+        mock_logger.debug.assert_any_call("Target group %s exists, updating configuration",
+                                          "controller_A")
+        mock_logger.debug.assert_any_call("Processing target group '%s' in device group '%s'",
+                                          "controller_C", "storage_group")
+        mock_logger.debug.assert_any_call("Target group %s doesn't exist, creating", "controller_C")
 
     def test_apply_config_device_groups_comprehensive_workflow(self,
                                                                group_writer,
@@ -3096,7 +3151,7 @@ class TestGroupWriter:
         group_writer._apply_target_groups.assert_has_calls(expected_target_group_calls)
 
         # Assert: Verify debug logging
-        mock_logger.debug.assert_any_call("Device group existing_group config differs, updating incrementally")
-        mock_logger.debug.assert_any_call("Created device group new_group")
-        mock_logger.debug.assert_any_call("Set device group attribute new_group.other_attr = value2")
-        mock_logger.debug.assert_any_call("Added device disk3 to device group new_group")
+        mock_logger.debug.assert_any_call("Device group %s config differs, updating incrementally", "existing_group")
+        mock_logger.debug.assert_any_call("Created device group %s", "new_group")
+        mock_logger.debug.assert_any_call("Set device group attribute %s.%s = %s", "new_group", "other_attr", "value2")
+        mock_logger.debug.assert_any_call("Added device %s to device group %s", "disk3", "new_group")

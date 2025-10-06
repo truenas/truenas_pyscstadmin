@@ -36,9 +36,9 @@ class DeviceWriter:
             attr_path = f"{self.sysfs.SCST_HANDLERS}/{handler}/{device_name}/{attr_name}"
             try:
                 self.sysfs.write_sysfs(attr_path, attr_value, check_result=False)
-                self.logger.debug(f"Set device attribute {device_name}.{attr_name} = {attr_value}")
+                self.logger.debug("Set device attribute %s.%s = %s", device_name, attr_name, attr_value)
             except SCSTError as e:
-                self.logger.warning(f"Failed to set device attribute {device_name}.{attr_name}: {e}")
+                self.logger.warning("Failed to set device attribute %s.%s: %s", device_name, attr_name, e)
 
     def remove_device(self, handler: str, device_name: str) -> None:
         """Remove an existing device."""
@@ -46,7 +46,7 @@ class DeviceWriter:
             self.sysfs.write_sysfs(f"{self.sysfs.SCST_HANDLERS}/{handler}/mgmt",
                                    f"del_device {device_name}")
         except SCSTError as e:
-            self.logger.warning(f"Failed to remove existing device {device_name}: {e}")
+            self.logger.warning("Failed to remove existing device %s: %s", device_name, e)
             # Continue anyway - the creation might still work
 
     def remove_device_by_name(self, device_name: str) -> None:
@@ -62,7 +62,7 @@ class DeviceWriter:
                         handler_mgmt, f"del_device {device_name}")
                     break
         except SCSTError as e:
-            self.logger.warning(f"Failed to remove device {device_name}: {e}")
+            self.logger.warning("Failed to remove device %s: %s", device_name, e)
 
     def create_device(self, handler: str, device_name: str,
                       creation_params: Dict[str, str], post_creation_attrs: Dict[str, str]) -> None:
@@ -159,7 +159,7 @@ class DeviceWriter:
         3. If device exists but only post-creation attributes differ → update in-place
         4. If device already matches configuration → skip it
         """
-        self.logger.debug(f"Applying device configurations. Found {len(config.devices)} devices")
+        self.logger.debug("Applying device configurations. Found %s devices", len(config.devices))
         for device_name, device_config in config.devices.items():
             handler = device_config.handler_type
 
@@ -172,14 +172,14 @@ class DeviceWriter:
                 action = self.determine_device_action(
                     handler, device_name, device_config, creation_params, post_creation_attrs)
                 if action == ConfigAction.SKIP:
-                    self.logger.debug(f"Device {device_name} already exists with matching config, skipping")
+                    self.logger.debug("Device %s already exists with matching config, skipping", device_name)
                     continue
                 elif action == ConfigAction.UPDATE:
-                    self.logger.debug(f"Device {device_name} exists, updating post-creation attributes only")
+                    self.logger.debug("Device %s exists, updating post-creation attributes only", device_name)
                     self.set_device_attributes(handler, device_name, post_creation_attrs)
                     continue
                 elif action == ConfigAction.RECREATE:
-                    self.logger.debug(f"Device {device_name} creation attributes differ, removing and recreating")
+                    self.logger.debug("Device %s creation attributes differ, removing and recreating", device_name)
                     self.remove_device(handler, device_name)
 
             # Device doesn't exist or needs recreation - create it
