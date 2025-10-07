@@ -264,6 +264,11 @@ class SCSTAdmin:
 
         # Remove targets and LUNs not in new config
         for driver_name, driver_config in current_config.drivers.items():
+            # Skip copy_manager - it's auto-managed by SCST kernel (matches Perl behavior)
+            # copy_manager_tgt is a built-in permanent target that auto-populates with devices
+            if driver_name == 'copy_manager':
+                continue
+
             new_driver_config = new_config.drivers.get(driver_name)
 
             for target_name, target_config in driver_config.targets.items():
