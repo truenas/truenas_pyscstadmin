@@ -863,11 +863,8 @@ class TargetWriter:
                             self.logger.debug(
                                 "Found duplicate LUN %s for device %s (expected: %s)",
                                 lun_item, device, expected)
-                    else:
-                        # Device NOT in explicit config - remove it (Perl behavior for copy_manager)
-                        # copy_manager auto-creates LUNs, but we only keep explicitly configured ones
-                        luns_to_remove.append(lun_item)
-                        self.logger.debug("Found LUN %s for device %s not in config, removing", lun_item, device)
+                    # If device is NOT in explicit config, leave it alone - copy_manager can have
+                    # auto-created LUNs for devices not explicitly listed in the config
 
             # Clean up duplicates using SCST management interface
             if luns_to_remove:
