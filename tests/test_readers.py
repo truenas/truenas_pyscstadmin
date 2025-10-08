@@ -854,6 +854,20 @@ The following target attributes available: IncomingUser.
 
         mock_sysfs.valid_path.return_value = True
 
+        # Mock read_sysfs for mgmt interface
+        mock_sysfs.read_sysfs.return_value = """Usage: echo "add_target target_name [parameters]" >mgmt
+       echo "del_target target_name" >mgmt
+       echo "add_attribute <attribute> <value>" >mgmt
+       echo "del_attribute <attribute> <value>" >mgmt
+       echo "add_target_attribute target_name <attribute> <value>" >mgmt
+       echo "del_target_attribute target_name <attribute> <value>" >mgmt
+
+where parameters are one or more param_name=value pairs separated by ';'
+
+The following target driver attributes available: IncomingUser, OutgoingUser
+The following target attributes available: IncomingUser, OutgoingUser, allowed_portal
+"""
+
         # Mock _read_attribute_if_non_default to return non-default value for iSNSServer
         def mock_read_non_default(path):
             if path.endswith('/iSNSServer'):

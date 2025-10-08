@@ -5,6 +5,7 @@ Handles target/driver management, LUN operations, and target attribute discovery
 This module focuses on target-specific operations within the SCST configuration.
 """
 
+import glob
 import logging
 import os
 from typing import Dict, Set, Optional
@@ -386,6 +387,23 @@ class TargetReader:
                     attr_value = self._read_attribute_if_non_default(attr_path)
                     if attr_value is not None:
                         driver_config['attributes'][attr_name] = attr_value
+
+            # Read driver mgmt attributes (IncomingUser, OutgoingUser, etc.)
+            # These are dynamically created via add_attribute commands
+            mgmt_info = self._get_target_mgmt_info(driver)
+            driver_mgmt_attrs = mgmt_info.get('driver_attributes', set())
+            for attr_name in driver_mgmt_attrs:
+                # Use glob to find all variants (IncomingUser, IncomingUser1, IncomingUser2, etc.)
+                # Numbered variants may have gaps (e.g., IncomingUser, IncomingUser2, IncomingUser5)
+                collected_values = []
+                pattern = os.path.join(driver_path, f"{attr_name}*")
+                for attr_file in glob.glob(pattern):
+                    if value := self._safe_read_attribute(attr_file):
+                        collected_values.append(value)
+
+                # Store as semicolon-separated if multiple values
+                if collected_values:
+                    driver_config['attributes'][attr_name] = ';'.join(collected_values)
 
             # Read targets for this driver
             # Get known driver attributes to skip for target detection
