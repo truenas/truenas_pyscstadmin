@@ -3,6 +3,7 @@ Target Writer for SCST Administration
 
 This module handles target-specific write operations for SCST configuration.
 """
+import glob
 import os
 import time
 import logging
@@ -1178,6 +1179,10 @@ class TargetWriter:
         Sets driver-specific attributes like threading models, queue depths, and
         protocol parameters. Skips 'enabled' which is handled separately for proper
         initialization ordering.
+
+        Driver attributes can be set via two mechanisms:
+        1. Management commands (add_attribute) - for IncomingUser, OutgoingUser, etc.
+        2. Direct sysfs writes - for regular attributes like iSNSServer, link_local, etc.
         """
         for driver_name, driver_config in config.drivers.items():
             driver_path = f"{self.sysfs.SCST_TARGETS}/{driver_name}"
@@ -1187,32 +1192,43 @@ class TargetWriter:
                 self.logger.warning("Driver %s not available", driver_name)
                 continue
 
+            # Get mgmt interface info to identify mgmt-controlled attributes
+            mgmt_info = self.config_reader._get_target_mgmt_info(driver_name)
+            driver_mgmt_attrs = mgmt_info.get('driver_attributes', set())
+
             # Apply configuration attributes (enabled handled separately for proper sequencing)
             for attr_name, attr_value in driver_config.attributes.items():
                 if attr_name == 'enabled':
                     continue  # Skip enabled - must be set after other attributes
 
-                attr_path = f"{driver_path}/{attr_name}"
+                # Check if this is a mgmt-controlled driver attribute
+                if attr_name in driver_mgmt_attrs:
+                    # Use incremental update for driver mgmt attributes (matches Perl behavior)
+                    # Compare current vs desired values and only add/remove what changed
+                    self._update_driver_mgmt_attribute(driver_name, attr_name, attr_value)
+                else:
+                    # Use direct sysfs write for regular attributes
+                    attr_path = f"{driver_path}/{attr_name}"
 
-                # Skip read-only attributes to avoid errors
-                if not os.access(attr_path, os.W_OK) if os.path.exists(attr_path) else True:
-                    if os.path.exists(attr_path):
-                        self.logger.debug("Skipping non-writable attribute %s.%s", driver_name, attr_name)
-                        continue
+                    # Skip read-only attributes to avoid errors
+                    if not os.access(attr_path, os.W_OK) if os.path.exists(attr_path) else True:
+                        if os.path.exists(attr_path):
+                            self.logger.debug("Skipping non-writable attribute %s.%s", driver_name, attr_name)
+                            continue
 
-                try:
-                    # Avoid unnecessary sysfs writes for performance
-                    if self.sysfs.valid_path(attr_path):
-                        current_value = self.sysfs.read_sysfs_attribute(attr_path)
-                        if current_value != attr_value:
+                    try:
+                        # Avoid unnecessary sysfs writes for performance
+                        if self.sysfs.valid_path(attr_path):
+                            current_value = self.sysfs.read_sysfs_attribute(attr_path)
+                            if current_value != attr_value:
+                                self.sysfs.write_sysfs(attr_path, attr_value, check_result=False)
+                                self.logger.debug("Set driver attribute %s.%s = %s", driver_name, attr_name, attr_value)
+                        else:
+                            # Fallback: attempt write even if path validation failed
                             self.sysfs.write_sysfs(attr_path, attr_value, check_result=False)
                             self.logger.debug("Set driver attribute %s.%s = %s", driver_name, attr_name, attr_value)
-                    else:
-                        # Fallback: attempt write even if path validation failed
-                        self.sysfs.write_sysfs(attr_path, attr_value, check_result=False)
-                        self.logger.debug("Set driver attribute %s.%s = %s", driver_name, attr_name, attr_value)
-                except SCSTError as e:
-                    self.logger.warning("Failed to set driver attribute %s.%s: %s", driver_name, attr_name, e)
+                    except SCSTError as e:
+                        self.logger.warning("Failed to set driver attribute %s.%s: %s", driver_name, attr_name, e)
 
     def _disable_target_if_possible(self, driver_name: str, target_name: str) -> None:
         """Disable target to prevent new connections if it has an enabled attribute"""
@@ -1386,9 +1402,80 @@ class TargetWriter:
                 if attr_name not in new_attributes:
                     self._remove_driver_attribute(driver_name, attr_name)
 
+    def _update_driver_mgmt_attribute(self, driver_name: str, attr_name: str, desired_value: str) -> None:
+        """Incrementally update a driver management attribute by comparing current vs desired values.
+
+        This implements the Perl scstadmin logic for driver dynamic attributes:
+        - Read current attribute values from sysfs (IncomingUser, IncomingUser1, IncomingUser2, etc.)
+        - Parse desired values from config (semicolon-separated)
+        - Add values that don't exist
+        - Remove values that shouldn't exist
+        - Leave matching values unchanged
+
+        Args:
+            driver_name: SCST driver name (e.g., 'iscsi')
+            attr_name: Attribute name (e.g., 'IncomingUser', 'OutgoingUser')
+            desired_value: Semicolon-separated values (e.g., "user1 pass1;user2 pass2")
+        """
+        driver_path = f"{self.sysfs.SCST_TARGETS}/{driver_name}"
+        driver_mgmt = f"{driver_path}/mgmt"
+
+        # Parse desired values from config
+        desired_values = set()
+        if desired_value:
+            for value in desired_value.split(';'):
+                value = value.strip()
+                if value:
+                    desired_values.add(value)
+
+        # Read current values from sysfs using glob to handle gaps in numbering
+        # (e.g., IncomingUser, IncomingUser2, IncomingUser5)
+        current_values = set()
+        pattern = os.path.join(driver_path, f"{attr_name}*")
+        for attr_file in glob.glob(pattern):
+            try:
+                if value := self.sysfs.read_sysfs_attribute(attr_file):
+                    current_values.add(value)
+            except SCSTError:
+                pass
+
+        # Determine what to add and what to remove
+        values_to_add = desired_values - current_values
+        values_to_remove = current_values - desired_values
+
+        # Remove obsolete values
+        for value in values_to_remove:
+            try:
+                command = f"del_attribute {attr_name} {value}"
+                self.sysfs.write_sysfs(driver_mgmt, command, check_result=False)
+                self.logger.debug("Removed driver mgmt attribute %s.%s = %s", driver_name, attr_name, value)
+            except SCSTError as e:
+                self.logger.warning("Failed to remove driver mgmt attribute %s.%s=%s: %s",
+                                    driver_name, attr_name, value, e)
+
+        # Add new values
+        for value in values_to_add:
+            try:
+                command = f"add_attribute {attr_name} {value}"
+                self.sysfs.write_sysfs(driver_mgmt, command, check_result=False)
+                self.logger.debug("Added driver mgmt attribute %s.%s = %s", driver_name, attr_name, value)
+            except SCSTError as e:
+                self.logger.warning("Failed to add driver mgmt attribute %s.%s=%s: %s",
+                                    driver_name, attr_name, value, e)
+
     def _remove_driver_attribute(self, driver_name: str, attr_name: str) -> None:
-        """Remove a specific driver attribute by resetting it to default value"""
+        """Remove a specific driver attribute by resetting it to default value or using mgmt commands"""
         try:
+            # Check if this is a mgmt-controlled driver attribute
+            mgmt_info = self.config_reader._get_target_mgmt_info(driver_name)
+            driver_mgmt_attrs = mgmt_info.get('driver_attributes', set())
+
+            if attr_name in driver_mgmt_attrs:
+                # Use incremental update with empty desired value to remove all
+                self._update_driver_mgmt_attribute(driver_name, attr_name, '')
+                return
+
+            # For regular sysfs attributes, reset to default value
             attr_path = f"{self.sysfs.SCST_TARGETS}/{driver_name}/{attr_name}"
 
             # Skip if attribute file doesn't exist or isn't writable

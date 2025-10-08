@@ -454,8 +454,10 @@ class SCSTConfigParser:
                 i = self._parse_target_block(lines, i, driver_config_dict['targets'])
             else:
                 # Parse driver-level attributes using single-line parser
+                # Use custom handler to combine multiple values (e.g., multiple IncomingUser)
                 if '=' in line or ' ' in line:
-                    self._parse_single_attribute_line(line, driver_config_dict['attributes'])
+                    self._parse_single_attribute_line(line, driver_config_dict['attributes'],
+                                                      self._add_target_attribute)
                 i += 1
 
         # Create DriverConfig object from parsed data
