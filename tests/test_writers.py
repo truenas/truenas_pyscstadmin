@@ -579,6 +579,7 @@ class TestDeviceWriter:
         handler = "vdisk_fileio"
         device_name = "disk1"
         device_config = Mock()
+        device_config._CREATION_PARAMS = {'filename', 'size_mb', 'blocksize', 'cluster_mode'}
         creation_params = {"filename": "/dev/sda", "size_mb": "1024"}
         post_creation_attrs = {"read_only": "1", "rotational": "0"}
 
@@ -591,6 +592,10 @@ class TestDeviceWriter:
         }
         mock_config_reader._get_current_device_attrs.return_value = current_attrs
 
+        # Mock sysfs.read_sysfs to raise error for non-existent attributes (blocksize, cluster_mode)
+        from scstadmin.exceptions import SCSTError
+        mock_sysfs.read_sysfs.side_effect = SCSTError("File not found")
+
         # Act: Call the method under test
         result = device_writer.determine_device_action(
             handler, device_name, device_config, creation_params, post_creation_attrs)
@@ -599,7 +604,8 @@ class TestDeviceWriter:
         assert result == ConfigAction.SKIP
 
         # Assert: Verify config reader was called correctly
-        expected_attrs_to_check = {"filename", "size_mb", "read_only", "rotational"}
+        # Now checks all creation params (not just ones in config) for [key] detection
+        expected_attrs_to_check = {"filename", "size_mb", "blocksize", "cluster_mode", "read_only", "rotational"}
         mock_config_reader._get_current_device_attrs.assert_called_once_with(
             handler, device_name, expected_attrs_to_check)
 
@@ -620,6 +626,7 @@ class TestDeviceWriter:
         handler = "vdisk_fileio"
         device_name = "disk1"
         device_config = Mock()
+        device_config._CREATION_PARAMS = {'filename', 'size_mb', 'blocksize', 'cluster_mode'}
         creation_params = {"filename": "/dev/sda", "size_mb": "2048"}  # size_mb differs
         post_creation_attrs = {"read_only": "1"}
 
@@ -631,6 +638,10 @@ class TestDeviceWriter:
         }
         mock_config_reader._get_current_device_attrs.return_value = current_attrs
 
+        # Mock sysfs.read_sysfs to raise error for non-existent attributes (blocksize, cluster_mode)
+        from scstadmin.exceptions import SCSTError
+        mock_sysfs.read_sysfs.side_effect = SCSTError("File not found")
+
         # Act: Call the method under test
         result = device_writer.determine_device_action(
             handler, device_name, device_config, creation_params, post_creation_attrs)
@@ -639,7 +650,8 @@ class TestDeviceWriter:
         assert result == ConfigAction.RECREATE
 
         # Assert: Verify attributes were checked
-        expected_attrs_to_check = {"filename", "size_mb", "read_only"}
+        # Now checks all creation params (not just ones in config) for [key] detection
+        expected_attrs_to_check = {"filename", "size_mb", "blocksize", "cluster_mode", "read_only"}
         mock_config_reader._get_current_device_attrs.assert_called_once_with(
             handler, device_name, expected_attrs_to_check)
 
@@ -657,6 +669,7 @@ class TestDeviceWriter:
         handler = "vdisk_fileio"
         device_name = "disk1"
         device_config = Mock()
+        device_config._CREATION_PARAMS = {'filename', 'size_mb', 'blocksize', 'cluster_mode'}
         creation_params = {"filename": "/dev/sda", "size_mb": "1024"}
         post_creation_attrs = {"read_only": "1", "rotational": "0"}  # rotational differs
 
@@ -669,6 +682,10 @@ class TestDeviceWriter:
         }
         mock_config_reader._get_current_device_attrs.return_value = current_attrs
 
+        # Mock sysfs.read_sysfs to raise error for non-existent attributes (blocksize, cluster_mode)
+        from scstadmin.exceptions import SCSTError
+        mock_sysfs.read_sysfs.side_effect = SCSTError("File not found")
+
         # Act: Call the method under test
         result = device_writer.determine_device_action(
             handler, device_name, device_config, creation_params, post_creation_attrs)
@@ -677,7 +694,8 @@ class TestDeviceWriter:
         assert result == ConfigAction.UPDATE
 
         # Assert: Verify attributes were checked
-        expected_attrs_to_check = {"filename", "size_mb", "read_only", "rotational"}
+        # Now checks all creation params (not just ones in config) for [key] detection
+        expected_attrs_to_check = {"filename", "size_mb", "blocksize", "cluster_mode", "read_only", "rotational"}
         mock_config_reader._get_current_device_attrs.assert_called_once_with(
             handler, device_name, expected_attrs_to_check)
 
