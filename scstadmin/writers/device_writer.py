@@ -127,16 +127,44 @@ class DeviceWriter:
     def determine_device_action(self, handler: str, device_name: str, device_config: DeviceConfig,
                                 creation_params: Dict[str, str], post_creation_attrs: Dict[str, str]) -> ConfigAction:
         """Determine what action to take for an existing device.
+
+        Matches Perl scstadmin behavior: checks if any [key]-marked creation attributes
+        exist in current device but not in config, which requires device recreation.
+
         Returns:
             ConfigAction.SKIP: Device already matches configuration
             ConfigAction.UPDATE: Only post-creation attributes need updating
             ConfigAction.RECREATE: Creation attributes differ, device must be recreated
         """
-        # Read current attributes to determine what needs updating
-        config_attrs_to_check = set(creation_params.keys()) | set(post_creation_attrs.keys())
+        # Get all possible creation parameters for this handler type
+        all_creation_params = device_config._CREATION_PARAMS if hasattr(device_config, '_CREATION_PARAMS') else set()
+
+        # Read current attributes - check all creation params, not just ones in config
+        # This matches Perl's behavior of checking ALL device attributes
+        config_attrs_to_check = all_creation_params | set(post_creation_attrs.keys())
         existing_device_attrs = self.config_reader._get_current_device_attrs(handler,
                                                                              device_name,
                                                                              config_attrs_to_check)
+
+        # Check for [key]-marked creation attributes that exist in device but not in config
+        # This matches Perl's compareToKeyAttribute() logic (lines 2949-2951)
+        device_path = f"{self.sysfs.SCST_HANDLERS}/{handler}/{device_name}"
+        for attr_name in all_creation_params:
+            if attr_name not in creation_params:  # Attribute not in desired config
+                attr_path = f"{device_path}/{attr_name}"
+                try:
+                    # Read full attribute content including [key] marker
+                    full_content = self.sysfs.read_sysfs(attr_path)
+                    if '[key]' in full_content:
+                        # [key] attribute exists but not in config - must recreate device
+                        self.logger.debug(
+                            "Device %s has [key] creation attribute '%s' not in config, must recreate",
+                            device_name, attr_name)
+                        return ConfigAction.RECREATE
+                except (SCSTError, OSError, IOError):
+                    # Attribute doesn't exist or can't be read - that's fine
+                    pass
+
         # Check if creation-time attributes differ (requires device recreation)
         creation_attrs_differ = attrs_config_differs(
             creation_params, existing_device_attrs, entity_type="Device creation")
@@ -144,6 +172,7 @@ class DeviceWriter:
         # Check if post-creation attributes differ (can be updated in place)
         post_attrs_differ = attrs_config_differs(
             post_creation_attrs, existing_device_attrs, entity_type="Device post-creation")
+
         if not creation_attrs_differ and not post_attrs_differ:
             return ConfigAction.SKIP
         elif creation_attrs_differ:
