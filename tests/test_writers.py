@@ -593,7 +593,6 @@ class TestDeviceWriter:
         mock_config_reader._get_current_device_attrs.return_value = current_attrs
 
         # Mock sysfs.read_sysfs to raise error for non-existent attributes (blocksize, cluster_mode)
-        from scstadmin.exceptions import SCSTError
         mock_sysfs.read_sysfs.side_effect = SCSTError("File not found")
 
         # Act: Call the method under test
@@ -639,7 +638,6 @@ class TestDeviceWriter:
         mock_config_reader._get_current_device_attrs.return_value = current_attrs
 
         # Mock sysfs.read_sysfs to raise error for non-existent attributes (blocksize, cluster_mode)
-        from scstadmin.exceptions import SCSTError
         mock_sysfs.read_sysfs.side_effect = SCSTError("File not found")
 
         # Act: Call the method under test
@@ -683,7 +681,6 @@ class TestDeviceWriter:
         mock_config_reader._get_current_device_attrs.return_value = current_attrs
 
         # Mock sysfs.read_sysfs to raise error for non-existent attributes (blocksize, cluster_mode)
-        from scstadmin.exceptions import SCSTError
         mock_sysfs.read_sysfs.side_effect = SCSTError("File not found")
 
         # Act: Call the method under test
