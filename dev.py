@@ -90,14 +90,22 @@ def clean_cache(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Development helper for SCST Python Configurator")
+    parser = argparse.ArgumentParser(
+        description="Development helper for SCST Python Configurator"
+    )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Test command
     test_parser = subparsers.add_parser("test", help="Run tests")
-    test_parser.add_argument("--file", help="Run specific test file (e.g., 'admin' for test_admin.py)")
-    test_parser.add_argument("--coverage", action="store_true", help="Run with coverage report")
-    test_parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    test_parser.add_argument(
+        "--file", help="Run specific test file (e.g., 'admin' for test_admin.py)"
+    )
+    test_parser.add_argument(
+        "--coverage", action="store_true", help="Run with coverage report"
+    )
+    test_parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Verbose output"
+    )
 
     # Lint command
     subparsers.add_parser("lint", help="Run linting")

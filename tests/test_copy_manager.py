@@ -20,10 +20,10 @@ def test_passthrough_detection():
 
         # Test with some common device names
         test_devices = [
-            'sda',      # Common disk device (likely passthrough)
-            'sdb',      # Common disk device (likely passthrough)
-            'vdisk1',   # Virtual disk (not passthrough)
-            'nullio1',  # Virtual device (not passthrough)
+            "sda",  # Common disk device (likely passthrough)
+            "sdb",  # Common disk device (likely passthrough)
+            "vdisk1",  # Virtual disk (not passthrough)
+            "nullio1",  # Virtual device (not passthrough)
         ]
 
         for device in test_devices:
@@ -42,41 +42,45 @@ def test_config_filtering():
     # Create a mock configuration with copy_manager LUNs
     config = SCSTConfig()
     config.drivers = {
-        'copy_manager': {
-            'targets': {
-                'copy_manager_tgt': {
-                    'luns': {
-                        '0': {'device': 'sda', 'attributes': {}},      # Passthrough device
-                        '1': {'device': 'vdisk1', 'attributes': {}},  # Virtual device
-                        '2': {'device': 'sdb', 'attributes': {}}      # Passthrough device
+        "copy_manager": {
+            "targets": {
+                "copy_manager_tgt": {
+                    "luns": {
+                        "0": {"device": "sda", "attributes": {}},  # Passthrough device
+                        "1": {"device": "vdisk1", "attributes": {}},  # Virtual device
+                        "2": {"device": "sdb", "attributes": {}},  # Passthrough device
                     },
-                    'groups': {
-                        'default': {
-                            'luns': {
-                                '10': {'device': 'sdc', 'attributes': {}},    # Passthrough
-                                '11': {'device': 'nullio1', 'attributes': {}}  # Virtual
+                    "groups": {
+                        "default": {
+                            "luns": {
+                                "10": {
+                                    "device": "sdc",
+                                    "attributes": {},
+                                },  # Passthrough
+                                "11": {
+                                    "device": "nullio1",
+                                    "attributes": {},
+                                },  # Virtual
                             },
-                            'initiators': [],
-                            'attributes': {}
+                            "initiators": [],
+                            "attributes": {},
                         }
                     },
-                    'attributes': {}
+                    "attributes": {},
                 }
             },
-            'attributes': {}
+            "attributes": {},
         },
-        'iscsi': {
-            'targets': {
-                'iqn.test': {
-                    'luns': {
-                        '0': {'device': 'vdisk1', 'attributes': {}}
-                    },
-                    'groups': {},
-                    'attributes': {}
+        "iscsi": {
+            "targets": {
+                "iqn.test": {
+                    "luns": {"0": {"device": "vdisk1", "attributes": {}}},
+                    "groups": {},
+                    "attributes": {},
                 }
             },
-            'attributes': {}
-        }
+            "attributes": {},
+        },
     }
 
     # Test by creating admin and calling write method
@@ -86,14 +90,14 @@ def test_config_filtering():
         # Mock the passthrough detection for testing
         def mock_is_passthrough(device):
             # Mock: assume sd* devices are passthrough, others are virtual
-            return device.startswith('sd')
+            return device.startswith("sd")
 
         # Replace the method for testing
         original_method = admin._is_passthrough_device
         admin._is_passthrough_device = mock_is_passthrough
 
         # Test configuration writing
-        test_file = '/tmp/test_scst_config.conf'
+        test_file = "/tmp/test_scst_config.conf"
 
         # Mock read_current_config to return our test config
         admin.read_current_config = lambda: config
@@ -102,14 +106,17 @@ def test_config_filtering():
 
         # Read and display the generated config
         print("Generated configuration (filtered):")
-        with open(test_file, 'r') as f:
+        with open(test_file, "r") as f:
             content = f.read()
             print(content)
 
         # Check if passthrough devices were filtered out
-        lines = content.split('\n')
-        copy_manager_luns = [line for line in lines
-                             if 'LUN' in line and ('sda' in line or 'sdb' in line or 'sdc' in line)]
+        lines = content.split("\n")
+        copy_manager_luns = [
+            line
+            for line in lines
+            if "LUN" in line and ("sda" in line or "sdb" in line or "sdc" in line)
+        ]
 
         if copy_manager_luns:
             print("\n❌ ERROR: Found passthrough device LUNs that should be filtered:")
@@ -119,7 +126,11 @@ def test_config_filtering():
             print("\n✅ SUCCESS: Passthrough device LUNs properly filtered out")
 
         # Check if virtual devices were preserved
-        virtual_luns = [line for line in lines if 'LUN' in line and ('vdisk1' in line or 'nullio1' in line)]
+        virtual_luns = [
+            line
+            for line in lines
+            if "LUN" in line and ("vdisk1" in line or "nullio1" in line)
+        ]
         if virtual_luns:
             print("✅ SUCCESS: Virtual device LUNs preserved:")
             for line in virtual_luns:
@@ -132,10 +143,11 @@ def test_config_filtering():
     except Exception as e:
         print(f"❌ ERROR: Configuration filtering test failed: {e}")
         import traceback
+
         traceback.print_exc()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("Copy Manager LUN Filtering Test")
     print("=" * 40)
 

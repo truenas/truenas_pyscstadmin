@@ -14,8 +14,8 @@ from .group_reader import DeviceGroupReader
 from .config_reader import SCSTConfigurationReader
 
 __all__ = [
-    'DeviceReader',
-    'TargetReader',
-    'DeviceGroupReader',
-    'SCSTConfigurationReader'
+    "DeviceReader",
+    "TargetReader",
+    "DeviceGroupReader",
+    "SCSTConfigurationReader",
 ]

@@ -3,6 +3,7 @@ Target Writer for SCST Administration
 
 This module handles target-specific write operations for SCST configuration.
 """
+
 import glob
 import os
 import time
@@ -25,9 +26,11 @@ class TargetWriter:
     def __init__(self, sysfs: SCSTSysfs, config_reader=None, logger=None):
         self.sysfs = sysfs
         self.config_reader = config_reader
-        self.logger = logger or logging.getLogger('scstadmin.writers.target')
+        self.logger = logger or logging.getLogger("scstadmin.writers.target")
 
-    def set_target_attributes(self, driver_name: str, target_name: str, attributes: Dict[str, str]) -> None:
+    def set_target_attributes(
+        self, driver_name: str, target_name: str, attributes: Dict[str, str]
+    ) -> None:
         """Set target attributes after creation using appropriate SCST management commands.
 
         SCST target attributes are configured through different mechanisms depending on
@@ -65,33 +68,57 @@ class TargetWriter:
         driver_mgmt = f"{self.sysfs.SCST_TARGETS}/{driver_name}/mgmt"
 
         for attr_name, attr_value in attributes.items():
-            if attr_name in mgmt_info['target_attributes']:
+            if attr_name in mgmt_info["target_attributes"]:
                 # Use mgmt command for target-level mgmt attributes (e.g., IncomingUser)
                 # Handle multiple values separated by semicolons
-                values = attr_value.split(';') if ';' in attr_value else [attr_value]
+                values = attr_value.split(";") if ";" in attr_value else [attr_value]
 
                 for value in values:
                     if value.strip():  # Skip empty values
                         try:
                             self.logger.debug(
                                 "Setting target mgmt attribute %s/%s.%s = %s",
-                                driver_name, target_name, attr_name, value.strip())
+                                driver_name,
+                                target_name,
+                                attr_name,
+                                value.strip(),
+                            )
                             command = f"add_target_attribute {target_name} {attr_name} {value.strip()}"
-                            self.sysfs.write_sysfs(driver_mgmt, command, check_result=False)
+                            self.sysfs.write_sysfs(
+                                driver_mgmt, command, check_result=False
+                            )
                         except SCSTError as e:
                             self.logger.warning(
                                 "Failed to set %s/%s.%s=%s via mgmt: %s",
-                                driver_name, target_name, attr_name, value.strip(), e)
+                                driver_name,
+                                target_name,
+                                attr_name,
+                                value.strip(),
+                                e,
+                            )
             else:
                 # Use direct file write for regular attributes
-                attr_path = f"{self.sysfs.SCST_TARGETS}/{driver_name}/{target_name}/{attr_name}"
+                attr_path = (
+                    f"{self.sysfs.SCST_TARGETS}/{driver_name}/{target_name}/{attr_name}"
+                )
                 try:
                     self.sysfs.write_sysfs(attr_path, attr_value, check_result=False)
                 except SCSTError as e:
-                    self.logger.warning("Failed to set %s/%s.%s: %s", driver_name, target_name, attr_name, e)
+                    self.logger.warning(
+                        "Failed to set %s/%s.%s: %s",
+                        driver_name,
+                        target_name,
+                        attr_name,
+                        e,
+                    )
 
-    def update_target_attributes(self, driver_name: str, target_name: str,
-                                 desired_attrs: Dict[str, str], current_attrs: Dict[str, str]) -> None:
+    def update_target_attributes(
+        self,
+        driver_name: str,
+        target_name: str,
+        desired_attrs: Dict[str, str],
+        current_attrs: Dict[str, str],
+    ) -> None:
         """Update target attributes with efficient change detection and proper SCST handling.
 
         Compares desired configuration against current sysfs values and updates only
@@ -137,42 +164,65 @@ class TargetWriter:
             attrs_to_update[attr_name] = desired_value
             self.logger.debug(
                 "Target attribute '%s' needs update: current='%s' -> desired='%s'",
-                attr_name, current_value, desired_value)
+                attr_name,
+                current_value,
+                desired_value,
+            )
 
         # Find mgmt-managed attributes that need to be removed
         # ONLY check attributes that are in mgmt_info['target_attributes'] - these are the only
         # ones we can actually remove. All other attributes are read-only or system-managed.
-        for attr_name in mgmt_info['target_attributes']:
-            if attr_name not in desired_attrs and current_attrs.get(attr_name) is not None:
+        for attr_name in mgmt_info["target_attributes"]:
+            if (
+                attr_name not in desired_attrs
+                and current_attrs.get(attr_name) is not None
+            ):
                 attrs_to_remove.append(attr_name)
                 current_val = current_attrs.get(attr_name)
                 self.logger.debug(
                     "Target mgmt attribute '%s' needs removal: current='%s' -> not in desired",
-                    attr_name, current_val)
+                    attr_name,
+                    current_val,
+                )
 
         # Remove mgmt attributes that should no longer exist
         if attrs_to_remove:
-            self.logger.debug("Removing %s target mgmt attributes for %s/%s",
-                              len(attrs_to_remove), driver_name, target_name)
+            self.logger.debug(
+                "Removing %s target mgmt attributes for %s/%s",
+                len(attrs_to_remove),
+                driver_name,
+                target_name,
+            )
             for attr_name in attrs_to_remove:
                 self._remove_target_mgmt_attribute(driver_name, target_name, attr_name)
 
         # Update the attributes that differ
         if attrs_to_update:
-            self.logger.debug("Updating %s target attributes for %s/%s", len(attrs_to_update), driver_name, target_name)
+            self.logger.debug(
+                "Updating %s target attributes for %s/%s",
+                len(attrs_to_update),
+                driver_name,
+                target_name,
+            )
 
             # For mgmt-managed attributes, we need to remove old values first
             for attr_name, desired_value in attrs_to_update.items():
-                if attr_name in mgmt_info['target_attributes']:
+                if attr_name in mgmt_info["target_attributes"]:
                     # Remove existing values for this attribute
-                    self._remove_target_mgmt_attribute(driver_name, target_name, attr_name)
+                    self._remove_target_mgmt_attribute(
+                        driver_name, target_name, attr_name
+                    )
 
             # Set the new values
             self.set_target_attributes(driver_name, target_name, attrs_to_update)
         elif not attrs_to_remove:
-            self.logger.debug("No target attribute updates needed for %s/%s", driver_name, target_name)
+            self.logger.debug(
+                "No target attribute updates needed for %s/%s", driver_name, target_name
+            )
 
-    def _remove_target_mgmt_attribute(self, driver_name: str, target_name: str, attr_name: str) -> None:
+    def _remove_target_mgmt_attribute(
+        self, driver_name: str, target_name: str, attr_name: str
+    ) -> None:
         """Remove all variants of a target management attribute using SCST mgmt commands.
         SCST management-controlled attributes (like IncomingUser, OutgoingUser) can exist
         in multiple variants:
@@ -240,10 +290,21 @@ class TargetWriter:
                     self.sysfs.write_sysfs(driver_mgmt, command, check_result=False)
                     self.logger.debug(
                         "Removed target mgmt attribute %s/%s.%s = %s",
-                        driver_name, target_name, attr_name, value)
+                        driver_name,
+                        target_name,
+                        attr_name,
+                        value,
+                    )
                 except SCSTError as e:
                     # Log warning but continue - might not exist or already removed
-                    self.logger.debug("Could not remove %s/%s.%s=%s: %s", driver_name, target_name, attr_name, value, e)
+                    self.logger.debug(
+                        "Could not remove %s/%s.%s=%s: %s",
+                        driver_name,
+                        target_name,
+                        attr_name,
+                        value,
+                        e,
+                    )
         except (OSError, IOError) as e:
             self.logger.debug("Error reading target attributes for removal: %s", e)
 
@@ -280,9 +341,9 @@ class TargetWriter:
             - Driver vs target attribute distinction determines command format
         """
         result = {
-            'create_params': set(),        # Target creation parameters
-            'driver_attributes': set(),    # Driver-level mgmt attributes
-            'target_attributes': set()     # Target-level mgmt attributes
+            "create_params": set(),  # Target creation parameters
+            "driver_attributes": set(),  # Driver-level mgmt attributes
+            "target_attributes": set(),  # Target-level mgmt attributes
         }
         try:
             driver_mgmt = f"{self.sysfs.SCST_TARGETS}/{driver_name}/mgmt"
@@ -298,27 +359,29 @@ class TargetWriter:
                     for param in params_str.split(","):
                         param = param.strip()
                         if param:
-                            result['create_params'].add(param)
+                            result["create_params"].add(param)
                 elif "The following target driver attributes available:" in line:
                     _, attrs_str = line.split(":", 1)
                     attrs_str = attrs_str.strip().rstrip(".")
                     for attr in attrs_str.split(","):
                         attr = attr.strip()
                         if attr:
-                            result['driver_attributes'].add(attr)
+                            result["driver_attributes"].add(attr)
                 elif "The following target attributes available:" in line:
                     _, attrs_str = line.split(":", 1)
                     attrs_str = attrs_str.strip().rstrip(".")
                     for attr in attrs_str.split(","):
                         attr = attr.strip()
                         if attr:
-                            result['target_attributes'].add(attr)
+                            result["target_attributes"].add(attr)
         except SCSTError:
             # If we can't read mgmt interface, return empty sets
             pass
         return result
 
-    def _direct_lun_assignments_differ(self, driver: str, target: str, target_config: 'TargetConfig') -> bool:
+    def _direct_lun_assignments_differ(
+        self, driver: str, target: str, target_config: "TargetConfig"
+    ) -> bool:
         """Check if current direct LUN assignments differ from desired configuration.
         Compares current direct target LUN assignments (under target/luns/) against
         the desired direct LUN configuration.
@@ -337,7 +400,9 @@ class TargetWriter:
             if os.path.exists(luns_path):
                 for lun_item in os.listdir(luns_path):
                     if self.sysfs.is_valid_sysfs_directory(luns_path, lun_item):
-                        device = self.config_reader._get_current_lun_device(driver, target, lun_item)
+                        device = self.config_reader._get_current_lun_device(
+                            driver, target, lun_item
+                        )
                         if device:
                             current_direct_luns[lun_item] = device
 
@@ -354,7 +419,9 @@ class TargetWriter:
             # If we can't read current state, assume they differ
             return True
 
-    def _group_lun_assignments_differ(self, driver: str, target: str, target_config: 'TargetConfig') -> bool:
+    def _group_lun_assignments_differ(
+        self, driver: str, target: str, target_config: "TargetConfig"
+    ) -> bool:
         """Check if initiator group LUN assignments need updating.
         Compares current vs desired LUN assignments within each group to determine
         if updates are needed for access control changes.
@@ -368,17 +435,22 @@ class TargetWriter:
             if os.path.exists(ini_groups_path):
                 for group_name in os.listdir(ini_groups_path):
                     group_path = os.path.join(ini_groups_path, group_name)
-                    if group_name != self.sysfs.MGMT_INTERFACE and os.path.isdir(group_path):
+                    if group_name != self.sysfs.MGMT_INTERFACE and os.path.isdir(
+                        group_path
+                    ):
                         group_luns_path = f"{ini_groups_path}/{group_name}/luns"
                         if os.path.exists(group_luns_path):
                             group_luns = {}
                             for lun_item in os.listdir(group_luns_path):
-                                if lun_item != self.sysfs.MGMT_INTERFACE and os.path.isdir(
-                                        os.path.join(group_luns_path, lun_item)):
-                                    device = self.config_reader._get_current_group_lun_device(driver,
-                                                                                              target,
-                                                                                              group_name,
-                                                                                              lun_item)
+                                if (
+                                    lun_item != self.sysfs.MGMT_INTERFACE
+                                    and os.path.isdir(
+                                        os.path.join(group_luns_path, lun_item)
+                                    )
+                                ):
+                                    device = self.config_reader._get_current_group_lun_device(
+                                        driver, target, group_name, lun_item
+                                    )
                                     if device:
                                         group_luns[lun_item] = device
                             if group_luns:
@@ -401,7 +473,9 @@ class TargetWriter:
             # If we can't read current state, assume they differ
             return True
 
-    def _group_assignments_differ(self, driver: str, target: str, target_config: 'TargetConfig') -> bool:
+    def _group_assignments_differ(
+        self, driver: str, target: str, target_config: "TargetConfig"
+    ) -> bool:
         """Check if current initiator group assignments differ from desired configuration.
         Performs comprehensive comparison of initiator group configuration including
         both group membership (which groups exist) and individual group configurations
@@ -436,7 +510,9 @@ class TargetWriter:
             groups_path = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups"
             if os.path.exists(groups_path):
                 for group_item in os.listdir(groups_path):
-                    if group_item != self.sysfs.MGMT_INTERFACE and os.path.isdir(os.path.join(groups_path, group_item)):
+                    if group_item != self.sysfs.MGMT_INTERFACE and os.path.isdir(
+                        os.path.join(groups_path, group_item)
+                    ):
                         current_groups.add(group_item)
 
             # Get desired groups
@@ -450,14 +526,18 @@ class TargetWriter:
             for group_name in desired_groups:
                 if self._group_exists(driver, target, group_name):
                     group_config = target_config.groups[group_name]
-                    if not self._group_config_matches(driver, target, group_name, group_config):
+                    if not self._group_config_matches(
+                        driver, target, group_name, group_config
+                    ):
                         return True
             return False
         except (OSError, IOError):
             # If we can't read current state, assume they differ
             return True
 
-    def _update_target_groups(self, driver: str, target: str, target_config: 'TargetConfig') -> None:
+    def _update_target_groups(
+        self, driver: str, target: str, target_config: "TargetConfig"
+    ) -> None:
         """Update initiator groups for fine-grained client access control.
         Enables different client groups to see different devices or LUN mappings.
         Only updates groups that have actually changed for optimal performance.
@@ -473,50 +553,94 @@ class TargetWriter:
                 if self._group_config_matches(driver, target, group_name, group_config):
                     self.logger.debug(
                         "Group %s for %s/%s already exists with matching config, skipping",
-                        group_name, driver, target)
+                        group_name,
+                        driver,
+                        target,
+                    )
                     continue
                 else:
                     self.logger.debug(
                         "Group %s for %s/%s config differs, updating incrementally",
-                        group_name, driver, target)
+                        group_name,
+                        driver,
+                        target,
+                    )
                     # Update the group configuration incrementally
                     self._update_group_config(driver, target, group_name, group_config)
                     continue
             else:
                 # Group doesn't exist - create it
-                self.logger.debug("Group %s for %s/%s doesn't exist, creating", group_name, driver, target)
+                self.logger.debug(
+                    "Group %s for %s/%s doesn't exist, creating",
+                    group_name,
+                    driver,
+                    target,
+                )
 
             # Create the group if it doesn't exist
             try:
                 self.sysfs.write_sysfs(mgmt_path, f"create {group_name}")
-                self.logger.debug("Created group %s for %s/%s", group_name, driver, target)
+                self.logger.debug(
+                    "Created group %s for %s/%s", group_name, driver, target
+                )
             except SCSTError:
                 pass  # Group might already exist
 
             # Add initiators to the group
-            group_initiators_path = (f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/"
-                                     f"{group_name}/initiators/mgmt")
+            group_initiators_path = (
+                f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/"
+                f"{group_name}/initiators/mgmt"
+            )
             for initiator in group_config.initiators:  # InitiatorGroupConfig object
                 try:
                     # Remove config file escape characters for sysfs
-                    clean_initiator = initiator.replace('\\#', '#').replace('\\*', '*')
-                    self.sysfs.write_sysfs(group_initiators_path, f"add {clean_initiator}")
-                    self.logger.debug("Added initiator %s to group %s", clean_initiator, group_name)
+                    clean_initiator = initiator.replace("\\#", "#").replace("\\*", "*")
+                    self.sysfs.write_sysfs(
+                        group_initiators_path, f"add {clean_initiator}"
+                    )
+                    self.logger.debug(
+                        "Added initiator %s to group %s", clean_initiator, group_name
+                    )
                 except SCSTError as e:
-                    self.logger.warning("Failed to add initiator %s to group %s: %s", clean_initiator, group_name, e)
+                    self.logger.warning(
+                        "Failed to add initiator %s to group %s: %s",
+                        clean_initiator,
+                        group_name,
+                        e,
+                    )
 
             # Add LUN assignments to the group
             group_luns_path = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/{group_name}/luns/mgmt"
-            for lun_number, lun_config in group_config.luns.items():  # InitiatorGroupConfig object
+            for (
+                lun_number,
+                lun_config,
+            ) in group_config.luns.items():  # InitiatorGroupConfig object
                 lun_device = lun_config.device  # Extract device name from LunConfig
                 try:
-                    self.sysfs.write_sysfs(group_luns_path, f"add {lun_device} {lun_number}")
-                    self.logger.debug("Added LUN %s (%s) to group %s", lun_number, lun_device, group_name)
+                    self.sysfs.write_sysfs(
+                        group_luns_path, f"add {lun_device} {lun_number}"
+                    )
+                    self.logger.debug(
+                        "Added LUN %s (%s) to group %s",
+                        lun_number,
+                        lun_device,
+                        group_name,
+                    )
                 except SCSTError as e:
-                    self.logger.warning("Failed to add LUN %s to group %s: %s", lun_number, group_name, e)
+                    self.logger.warning(
+                        "Failed to add LUN %s to group %s: %s",
+                        lun_number,
+                        group_name,
+                        e,
+                    )
 
-    def _update_group_config(self, driver: str, target: str, group_name: str,
-                             group_config: 'InitiatorGroupConfig') -> None:
+    def _update_group_config(
+        self,
+        driver: str,
+        target: str,
+        group_name: str,
+        group_config: "InitiatorGroupConfig",
+    ) -> None:
         """Update initiator group membership and LUN assignments incrementally.
         Updates both initiator membership (which clients can access) and LUN assignments
         (which devices they see). Only changes what's actually different for performance.
@@ -525,12 +649,16 @@ class TargetWriter:
         """
         # Check if the group configuration actually needs updating
         if self._group_config_matches(driver, target, group_name, group_config):
-            self.logger.debug("Group %s configuration already matches, skipping update", group_name)
+            self.logger.debug(
+                "Group %s configuration already matches, skipping update", group_name
+            )
             return
         self.logger.debug("Updating group %s configuration incrementally", group_name)
 
         # For now, implement basic updates by checking what differs
-        group_path = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/{group_name}"
+        group_path = (
+            f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/{group_name}"
+        )
 
         # Phase 1: Update initiator membership (sysfs: ini_groups/{group}/initiators/{name})
         existing_initiators = set()
@@ -539,22 +667,25 @@ class TargetWriter:
             try:
                 for initiator_file in os.listdir(initiators_path):
                     if initiator_file != self.sysfs.MGMT_INTERFACE and os.path.isfile(
-                            os.path.join(initiators_path, initiator_file)):
+                        os.path.join(initiators_path, initiator_file)
+                    ):
                         existing_initiators.add(initiator_file)
             except (OSError, IOError):
                 pass
         desired_initiators = set(group_config.initiators)
         # Handle config file escaping: \\# and \\* in config become # and * in sysfs
-        normalized_existing = {init.replace('\\', '') for init in existing_initiators}
-        normalized_desired = {init.replace('\\', '') for init in desired_initiators}
+        normalized_existing = {init.replace("\\", "") for init in existing_initiators}
+        normalized_desired = {init.replace("\\", "") for init in desired_initiators}
         # Add missing initiators
         missing_initiators = normalized_desired - normalized_existing
         for initiator in missing_initiators:
             group_initiators_mgmt = f"{group_path}/initiators/mgmt"
             self.sysfs.mgmt_operation(
-                group_initiators_mgmt, "add", initiator,
+                group_initiators_mgmt,
+                "add",
+                initiator,
                 f"Added initiator {initiator} to group {group_name}",
-                f"Failed to add initiator {initiator} to group {group_name}"
+                f"Failed to add initiator {initiator} to group {group_name}",
             )
 
         # Remove extra initiators
@@ -562,16 +693,23 @@ class TargetWriter:
         for initiator in extra_initiators:
             group_initiators_mgmt = f"{group_path}/initiators/mgmt"
             self.sysfs.mgmt_operation(
-                group_initiators_mgmt, "del", initiator,
+                group_initiators_mgmt,
+                "del",
+                initiator,
                 f"Removed initiator {initiator} from group {group_name}",
-                f"Failed to remove initiator {initiator} from group {group_name}"
+                f"Failed to remove initiator {initiator} from group {group_name}",
             )
 
         # Update LUN assignments within the group
         self._update_group_lun_assignments(driver, target, group_name, group_config)
 
-    def _update_group_lun_assignments(self, driver: str, target: str, group_name: str,
-                                      group_config: 'InitiatorGroupConfig') -> None:
+    def _update_group_lun_assignments(
+        self,
+        driver: str,
+        target: str,
+        group_name: str,
+        group_config: "InitiatorGroupConfig",
+    ) -> None:
         """Update LUN-to-device assignments for an initiator group.
         Enables access control by allowing different groups to see different devices
         or the same devices at different LUN numbers. Only updates assignments that
@@ -579,7 +717,9 @@ class TargetWriter:
         Args:
             group_config: InitiatorGroupConfig object with luns property
         """
-        group_luns_path = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/{group_name}/luns"
+        group_luns_path = (
+            f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/{group_name}/luns"
+        )
         group_luns_mgmt = f"{group_luns_path}/mgmt"
 
         # Read current LUN assignments from sysfs: /sys/.../ini_groups/{group}/luns/{lun_num}/
@@ -587,8 +727,12 @@ class TargetWriter:
         if os.path.exists(group_luns_path):
             try:
                 for lun_item in os.listdir(group_luns_path):
-                    if lun_item != self.sysfs.MGMT_INTERFACE and os.path.isdir(os.path.join(group_luns_path, lun_item)):
-                        device = self.config_reader._get_current_group_lun_device(driver, target, group_name, lun_item)
+                    if lun_item != self.sysfs.MGMT_INTERFACE and os.path.isdir(
+                        os.path.join(group_luns_path, lun_item)
+                    ):
+                        device = self.config_reader._get_current_group_lun_device(
+                            driver, target, group_name, lun_item
+                        )
                         if device:
                             current_group_luns[lun_item] = device
             except (OSError, IOError):
@@ -606,9 +750,16 @@ class TargetWriter:
         for lun_number in luns_to_remove:
             try:
                 self.sysfs.write_sysfs(group_luns_mgmt, f"del {lun_number}")
-                self.logger.debug("Removed LUN %s from group %s", lun_number, group_name)
+                self.logger.debug(
+                    "Removed LUN %s from group %s", lun_number, group_name
+                )
             except SCSTError as e:
-                self.logger.warning("Failed to remove LUN %s from group %s: %s", lun_number, group_name, e)
+                self.logger.warning(
+                    "Failed to remove LUN %s from group %s: %s",
+                    lun_number,
+                    group_name,
+                    e,
+                )
 
         # Add or update LUNs that should exist
         for lun_number, device in desired_group_luns.items():
@@ -616,36 +767,69 @@ class TargetWriter:
             if current_device != device:
                 # LUN doesn't exist or has wrong device - add/update it
                 try:
-                    self.sysfs.write_sysfs(group_luns_mgmt, f"add {device} {lun_number}")
+                    self.sysfs.write_sysfs(
+                        group_luns_mgmt, f"add {device} {lun_number}"
+                    )
                     if current_device:
                         self.logger.debug(
                             "Updated LUN %s in group %s: %s → %s",
-                            lun_number, group_name, current_device, device)
+                            lun_number,
+                            group_name,
+                            current_device,
+                            device,
+                        )
                     else:
-                        self.logger.debug("Added LUN %s to group %s: %s", lun_number, group_name, device)
+                        self.logger.debug(
+                            "Added LUN %s to group %s: %s",
+                            lun_number,
+                            group_name,
+                            device,
+                        )
                 except SCSTError as e:
-                    self.logger.warning("Failed to add LUN %s (%s) to group %s: %s", lun_number, device, group_name, e)
+                    self.logger.warning(
+                        "Failed to add LUN %s (%s) to group %s: %s",
+                        lun_number,
+                        device,
+                        group_name,
+                        e,
+                    )
 
-    def _set_lun_attributes(self, driver: str, target: str, lun_number: str, attributes: Dict[str, str]) -> None:
+    def _set_lun_attributes(
+        self, driver: str, target: str, lun_number: str, attributes: Dict[str, str]
+    ) -> None:
         """Set LUN attributes after assignment"""
         for attr_name, attr_value in attributes.items():
             attr_path = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/luns/{lun_number}/{attr_name}"
             try:
                 self.sysfs.write_sysfs(attr_path, attr_value, check_result=False)
             except SCSTError as e:
-                self.logger.warning("Failed to set %s/%s/lun%s.%s: %s", driver, target, lun_number, attr_name, e)
+                self.logger.warning(
+                    "Failed to set %s/%s/lun%s.%s: %s",
+                    driver,
+                    target,
+                    lun_number,
+                    attr_name,
+                    e,
+                )
 
     def _target_exists(self, driver: str, target_name: str) -> bool:
         """Check if a target already exists under a driver"""
         target_path = f"{self.sysfs.SCST_TARGETS}/{driver}/{target_name}"
         return entity_exists(target_path)
 
-    def _target_config_differs(self, desired_attrs: Dict[str, str],
-                               current_attrs: Dict[str, str],
-                               removable_attrs: Optional[set] = None) -> bool:
+    def _target_config_differs(
+        self,
+        desired_attrs: Dict[str, str],
+        current_attrs: Dict[str, str],
+        removable_attrs: Optional[set] = None,
+    ) -> bool:
         """Compare desired target configuration with current configuration"""
-        return attrs_config_differs(desired_attrs, current_attrs, removable_attrs=removable_attrs,
-                                    entity_type="Target")
+        return attrs_config_differs(
+            desired_attrs,
+            current_attrs,
+            removable_attrs=removable_attrs,
+            entity_type="Target",
+        )
 
     def _lun_exists(self, driver: str, target: str, lun_number: str) -> bool:
         """Check if a LUN already exists for a target"""
@@ -654,11 +838,18 @@ class TargetWriter:
 
     def _group_exists(self, driver: str, target: str, group_name: str) -> bool:
         """Check if an initiator group already exists for a target"""
-        group_path = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/{group_name}"
+        group_path = (
+            f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/{group_name}"
+        )
         return entity_exists(group_path)
 
-    def _group_config_matches(self, driver: str, target: str, group_name: str,
-                              group_config: 'InitiatorGroupConfig') -> bool:
+    def _group_config_matches(
+        self,
+        driver: str,
+        target: str,
+        group_name: str,
+        group_config: "InitiatorGroupConfig",
+    ) -> bool:
         """Check if existing initiator group configuration matches desired configuration.
         Compares current initiator group settings in sysfs against desired configuration.
         Checks both initiator list and LUN assignments within the group.
@@ -676,7 +867,9 @@ class TargetWriter:
             - Returns False on any sysfs read errors for safety
         """
         try:
-            group_path = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/{group_name}"
+            group_path = (
+                f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/{group_name}"
+            )
             if not os.path.exists(group_path):
                 return False
 
@@ -686,16 +879,22 @@ class TargetWriter:
             if os.path.exists(initiators_path):
                 try:
                     for initiator_file in os.listdir(initiators_path):
-                        if initiator_file != self.sysfs.MGMT_INTERFACE and os.path.isfile(
-                                os.path.join(initiators_path, initiator_file)):
+                        if (
+                            initiator_file != self.sysfs.MGMT_INTERFACE
+                            and os.path.isfile(
+                                os.path.join(initiators_path, initiator_file)
+                            )
+                        ):
                             existing_initiators.add(initiator_file)
                 except (OSError, IOError):
                     pass
             desired_initiators = set(group_config.initiators)
 
             # Normalize both sets to handle backslash escaping differences
-            normalized_existing = {init.replace('\\', '') for init in existing_initiators}
-            normalized_desired = {init.replace('\\', '') for init in desired_initiators}
+            normalized_existing = {
+                init.replace("\\", "") for init in existing_initiators
+            }
+            normalized_desired = {init.replace("\\", "") for init in desired_initiators}
             if normalized_existing != normalized_desired:
                 return False
 
@@ -718,7 +917,7 @@ class TargetWriter:
         except (OSError, IOError):
             return False
 
-    def apply_config_assignments(self, config: 'SCSTConfig') -> None:
+    def apply_config_assignments(self, config: "SCSTConfig") -> None:
         """Apply target configurations with optimized incremental updates.
 
         Creates targets, updates attributes, and configures LUN/group assignments.
@@ -738,60 +937,106 @@ class TargetWriter:
                     mgmt_info = self.config_reader._get_target_mgmt_info(driver_name)
 
                     # Read attributes: config attrs + mgmt-managed attrs (to check for removal)
-                    config_attrs_to_check = set(target_attrs.keys()) | mgmt_info['target_attributes']
-                    existing_target_attrs = self.config_reader._get_current_target_attrs(
-                        driver_name, target_name, config_attrs_to_check)
+                    config_attrs_to_check = (
+                        set(target_attrs.keys()) | mgmt_info["target_attributes"]
+                    )
+                    existing_target_attrs = (
+                        self.config_reader._get_current_target_attrs(
+                            driver_name, target_name, config_attrs_to_check
+                        )
+                    )
 
                     # Filter out creation-time parameters (can't be changed post-creation)
                     # Examples: InitiatorName, TargetName for iSCSI targets
-                    settable_target_attrs = {k: v for k, v in target_attrs.items()
-                                             if k not in mgmt_info['create_params']}
+                    settable_target_attrs = {
+                        k: v
+                        for k, v in target_attrs.items()
+                        if k not in mgmt_info["create_params"]
+                    }
                     attrs_differ = self._target_config_differs(
-                        settable_target_attrs, existing_target_attrs,
-                        removable_attrs=mgmt_info['target_attributes'])
+                        settable_target_attrs,
+                        existing_target_attrs,
+                        removable_attrs=mgmt_info["target_attributes"],
+                    )
 
                     # Phase 1: Update target attributes if they've changed
                     if attrs_differ:
-                        self.logger.debug("Target attributes differ for %s/%s, updating", driver_name, target_name)
-                        self.update_target_attributes(driver_name, target_name, settable_target_attrs,
-                                                      existing_target_attrs)
+                        self.logger.debug(
+                            "Target attributes differ for %s/%s, updating",
+                            driver_name,
+                            target_name,
+                        )
+                        self.update_target_attributes(
+                            driver_name,
+                            target_name,
+                            settable_target_attrs,
+                            existing_target_attrs,
+                        )
 
                     # Phase 2: Check all assignment types (independent of attribute changes)
                     # Three types of LUN/access assignments that can change independently:
-                    direct_luns_differ = self._direct_lun_assignments_differ(driver_name, target_name,
-                                                                             target_config)  # Target-level LUNs
+                    direct_luns_differ = self._direct_lun_assignments_differ(
+                        driver_name, target_name, target_config
+                    )  # Target-level LUNs
 
-                    group_luns_differ = self._group_lun_assignments_differ(driver_name, target_name,
-                                                                           target_config)  # Group-specific LUNs
+                    group_luns_differ = self._group_lun_assignments_differ(
+                        driver_name, target_name, target_config
+                    )  # Group-specific LUNs
 
-                    groups_differ = self._group_assignments_differ(driver_name, target_name,
-                                                                   target_config)  # Group membership
+                    groups_differ = self._group_assignments_differ(
+                        driver_name, target_name, target_config
+                    )  # Group membership
 
                     if direct_luns_differ:
-                        self.logger.debug("Direct LUN assignments differ for %s/%s, updating", driver_name, target_name)
-                        self.apply_lun_assignments(driver_name, target_name, target_config)
+                        self.logger.debug(
+                            "Direct LUN assignments differ for %s/%s, updating",
+                            driver_name,
+                            target_name,
+                        )
+                        self.apply_lun_assignments(
+                            driver_name, target_name, target_config
+                        )
 
                     if group_luns_differ or groups_differ:
-                        self.logger.debug("Group assignments differ for %s/%s, updating", driver_name, target_name)
-                        self._update_target_groups(driver_name, target_name, target_config)
+                        self.logger.debug(
+                            "Group assignments differ for %s/%s, updating",
+                            driver_name,
+                            target_name,
+                        )
+                        self._update_target_groups(
+                            driver_name, target_name, target_config
+                        )
 
-                    if not (attrs_differ or direct_luns_differ or group_luns_differ or groups_differ):
+                    if not (
+                        attrs_differ
+                        or direct_luns_differ
+                        or group_luns_differ
+                        or groups_differ
+                    ):
                         self.logger.debug(
                             "Target %s/%s already exists with matching config, skipping",
-                            driver_name, target_name)
+                            driver_name,
+                            target_name,
+                        )
 
                     continue
 
                 # Create the target if it doesn't exist
-                creation_params = self.config_reader._get_target_create_params(driver_name, target_attrs)
+                creation_params = self.config_reader._get_target_create_params(
+                    driver_name, target_attrs
+                )
 
                 # For virtual targets (those with creation params like node_name),
                 # ensure hardware targets are enabled first
                 if creation_params:
-                    self.ensure_hardware_targets_enabled(driver_name, config.drivers[driver_name])
+                    self.ensure_hardware_targets_enabled(
+                        driver_name, config.drivers[driver_name]
+                    )
 
                 if creation_params:
-                    params_str = ';'.join([f"{k}={v}" for k, v in creation_params.items()])
+                    params_str = ";".join(
+                        [f"{k}={v}" for k, v in creation_params.items()]
+                    )
                     command = f"add_target {target_name} {params_str}"
                 else:
                     command = f"add_target {target_name}"
@@ -799,32 +1044,33 @@ class TargetWriter:
                 self.sysfs.write_sysfs(mgmt_path, command)
 
                 # Set remaining target attributes after creation
-                remaining_attrs = {k: v for k, v in target_attrs.items()
-                                   if k not in creation_params}
+                remaining_attrs = {
+                    k: v for k, v in target_attrs.items() if k not in creation_params
+                }
                 if remaining_attrs:
-                    self.set_target_attributes(driver_name, target_name, remaining_attrs)
+                    self.set_target_attributes(
+                        driver_name, target_name, remaining_attrs
+                    )
 
                 # Apply LUN assignments
-                self.apply_lun_assignments(
-                    driver_name, target_name, target_config)
+                self.apply_lun_assignments(driver_name, target_name, target_config)
 
                 # Apply group assignments
-                self.apply_group_assignments(
-                    driver_name, target_name, target_config)
+                self.apply_group_assignments(driver_name, target_name, target_config)
 
-    def cleanup_copy_manager_duplicates(self, config: 'SCSTConfig') -> None:
+    def cleanup_copy_manager_duplicates(self, config: "SCSTConfig") -> None:
         """Remove duplicate copy_manager LUN assignments to prevent conflicts.
 
         SCST copy_manager automatically creates LUNs but explicit config may specify
         different LUN numbers. Cleans up auto-created duplicates after explicit assignment.
         """
         # Early exit if no copy_manager driver configured
-        copy_manager_config = config.drivers.get('copy_manager')
+        copy_manager_config = config.drivers.get("copy_manager")
         if not copy_manager_config:
             return
 
         # Extract explicit LUN configuration from copy_manager_tgt
-        target_config = copy_manager_config.targets.get('copy_manager_tgt')
+        target_config = copy_manager_config.targets.get("copy_manager_tgt")
         explicit_luns = target_config.luns if target_config else {}
         if not explicit_luns:
             return  # No explicit LUNs configured, nothing to clean up
@@ -849,9 +1095,13 @@ class TargetWriter:
         try:
             luns_to_remove = []
             for lun_item in os.listdir(luns_path):
-                if lun_item != self.sysfs.MGMT_INTERFACE and os.path.isdir(f"{luns_path}/{lun_item}"):
+                if lun_item != self.sysfs.MGMT_INTERFACE and os.path.isdir(
+                    f"{luns_path}/{lun_item}"
+                ):
                     # Get device assigned to this LUN number
-                    device = self.config_reader._get_current_lun_device('copy_manager', 'copy_manager_tgt', lun_item)
+                    device = self.config_reader._get_current_lun_device(
+                        "copy_manager", "copy_manager_tgt", lun_item
+                    )
 
                     if device in explicit_devices:
                         # Check if this device should be at a different LUN number
@@ -862,7 +1112,10 @@ class TargetWriter:
                             expected = explicit_devices[device]
                             self.logger.debug(
                                 "Found duplicate LUN %s for device %s (expected: %s)",
-                                lun_item, device, expected)
+                                lun_item,
+                                device,
+                                expected,
+                            )
                     # If device is NOT in explicit config, leave it alone - copy_manager can have
                     # auto-created LUNs for devices not explicitly listed in the config
 
@@ -873,14 +1126,20 @@ class TargetWriter:
                     try:
                         # Management command: "del {lun_number}"
                         self.sysfs.write_sysfs(mgmt_path, f"del {lun_num}")
-                        self.logger.debug("Removed duplicate LUN %s from copy_manager_tgt", lun_num)
+                        self.logger.debug(
+                            "Removed duplicate LUN %s from copy_manager_tgt", lun_num
+                        )
                     except SCSTError as e:
-                        self.logger.warning("Failed to remove duplicate LUN %s: %s", lun_num, e)
+                        self.logger.warning(
+                            "Failed to remove duplicate LUN %s: %s", lun_num, e
+                        )
 
         except (OSError, IOError) as e:
             self.logger.warning("Failed to cleanup copy_manager duplicates: %s", e)
 
-    def ensure_hardware_targets_enabled(self, driver_name: str, driver_config: 'DriverConfig') -> None:
+    def ensure_hardware_targets_enabled(
+        self, driver_name: str, driver_config: "DriverConfig"
+    ) -> None:
         """Enable hardware targets that should be active according to configuration.
 
         Hardware targets (FC, SAS) require explicit enabling to become accessible.
@@ -893,7 +1152,7 @@ class TargetWriter:
                 return  # Driver not loaded or doesn't exist
 
             existing_targets = self.sysfs.list_directory(driver_path)
-            driver_attrs = self.DRIVER_ATTRIBUTES.get(driver_name, set())
+            driver_attrs = SCSTConstants.DRIVER_ATTRIBUTES.get(driver_name, set())
 
             for target in existing_targets:
                 # Filter out driver-level attributes and management interfaces
@@ -928,24 +1187,33 @@ class TargetWriter:
                 # Default to disabled ('0') if not explicitly configured
                 target_config = driver_config.targets.get(target)
                 target_attrs = target_config.attributes if target_config else {}
-                should_be_enabled = target_attrs.get('enabled', '0') == '1'
+                should_be_enabled = target_attrs.get("enabled", "0") == "1"
 
                 # Enable hardware target if it should be enabled but currently isn't
-                if should_be_enabled and current_enabled != '1':
-                    self.logger.debug("Enabling hardware target %s/%s for virtual target creation", driver_name, target)
+                if should_be_enabled and current_enabled != "1":
+                    self.logger.debug(
+                        "Enabling hardware target %s/%s for virtual target creation",
+                        driver_name,
+                        target,
+                    )
                     try:
-                        self.sysfs.write_sysfs(enabled_path, '1', check_result=False)
+                        self.sysfs.write_sysfs(enabled_path, "1", check_result=False)
                     except SCSTError as e:
-                        self.logger.warning("Failed to enable hardware target %s/%s: %s", driver_name, target, e)
+                        self.logger.warning(
+                            "Failed to enable hardware target %s/%s: %s",
+                            driver_name,
+                            target,
+                            e,
+                        )
 
         except SCSTError as e:
-            self.logger.warning("Failed to check hardware targets for %s: %s", driver_name, e)
+            self.logger.warning(
+                "Failed to check hardware targets for %s: %s", driver_name, e
+            )
 
     def apply_lun_assignments(
-            self,
-            driver: str,
-            target: str,
-            target_config: Dict[str, Any]) -> None:
+        self, driver: str, target: str, target_config: Dict[str, Any]
+    ) -> None:
         """Apply direct LUN-to-device assignments for a target.
 
         Creates LUN assignments with proper parameter handling and device verification.
@@ -959,13 +1227,15 @@ class TargetWriter:
         # current_lun_devices: enables fast lookup of current device assignments without sysfs reads
         existing_lun_map = {}  # {device: lun_number}
         current_lun_devices = {}  # {lun_number: device}
-        if driver == 'copy_manager' and target == 'copy_manager_tgt':
+        if driver == "copy_manager" and target == "copy_manager_tgt":
             luns_dir = Path(self.sysfs.SCST_TARGETS) / driver / target / "luns"
             try:
                 for lun_path in luns_dir.iterdir():
                     existing_lun = lun_path.name
                     if existing_lun != self.sysfs.MGMT_INTERFACE and lun_path.is_dir():
-                        existing_device = self.config_reader._get_current_lun_device(driver, target, existing_lun)
+                        existing_device = self.config_reader._get_current_lun_device(
+                            driver, target, existing_lun
+                        )
                         if existing_device:
                             existing_lun_map[existing_device] = existing_lun
                             current_lun_devices[existing_lun] = existing_device
@@ -982,13 +1252,16 @@ class TargetWriter:
                 continue  # Skip empty device assignments
 
             # Special handling for copy_manager: check if device already has a LUN assigned elsewhere
-            if driver == 'copy_manager' and target == 'copy_manager_tgt':
+            if driver == "copy_manager" and target == "copy_manager_tgt":
                 existing_lun = existing_lun_map.get(device)
                 if existing_lun and existing_lun != lun_number:
                     # Device already assigned to different LUN, remove it first
                     self.logger.debug(
                         "Device %s already at LUN %s, removing before assigning to LUN %s",
-                        device, existing_lun, lun_number)
+                        device,
+                        existing_lun,
+                        lun_number,
+                    )
                     try:
                         self.sysfs.write_sysfs(luns_path, f"del {existing_lun}")
                         # Update maps since we removed it
@@ -996,64 +1269,101 @@ class TargetWriter:
                         if existing_lun in current_lun_devices:
                             del current_lun_devices[existing_lun]
                     except SCSTError as e:
-                        self.logger.warning("Failed to remove existing LUN %s: %s", existing_lun, e)
+                        self.logger.warning(
+                            "Failed to remove existing LUN %s: %s", existing_lun, e
+                        )
 
             # Optimization: check if LUN assignment already correct (avoid unnecessary operations)
             lun_exists = self._lun_exists(driver, target, lun_number)
             if lun_exists:
                 # For copy_manager, use cached device mapping; otherwise read from sysfs
-                if driver == 'copy_manager' and target == 'copy_manager_tgt':
+                if driver == "copy_manager" and target == "copy_manager_tgt":
                     current_device = current_lun_devices.get(lun_number, "")
                 else:
-                    current_device = self.config_reader._get_current_lun_device(driver, target, lun_number)
+                    current_device = self.config_reader._get_current_lun_device(
+                        driver, target, lun_number
+                    )
                 if current_device == device:
                     # LUN already correctly assigned, skip this LUN
                     self.logger.debug(
                         "LUN %s for %s/%s already assigned to correct device %s, skipping",
-                        lun_number, driver, target, device)
+                        lun_number,
+                        driver,
+                        target,
+                        device,
+                    )
                     continue
                 elif current_device == "":
                     # LUN exists but device symlink is broken/stale - must recreate assignment
                     self.logger.debug(
                         "LUN %s for %s/%s has broken device symlink, removing and recreating",
-                        lun_number, driver, target)
+                        lun_number,
+                        driver,
+                        target,
+                    )
                     try:
                         # Management command: "del {lun_number}"
                         self.sysfs.write_sysfs(luns_path, f"del {lun_number}")
                     except SCSTError as e:
-                        self.logger.warning("Failed to remove existing LUN %s for %s/%s: %s",
-                                            lun_number, driver, target, e)
+                        self.logger.warning(
+                            "Failed to remove existing LUN %s for %s/%s: %s",
+                            lun_number,
+                            driver,
+                            target,
+                            e,
+                        )
                         # Continue anyway - the new assignment might still work
                 else:
                     # LUN exists but points to wrong device - must recreate assignment
                     self.logger.debug(
                         "LUN %s for %s/%s assigned to different device (%s vs %s), removing and recreating",
-                        lun_number, driver, target, current_device, device)
+                        lun_number,
+                        driver,
+                        target,
+                        current_device,
+                        device,
+                    )
                     try:
                         # Management command: "del {lun_number}"
                         self.sysfs.write_sysfs(luns_path, f"del {lun_number}")
                     except SCSTError as e:
-                        self.logger.warning("Failed to remove existing LUN %s for %s/%s: %s",
-                                            lun_number, driver, target, e)
+                        self.logger.warning(
+                            "Failed to remove existing LUN %s for %s/%s: %s",
+                            lun_number,
+                            driver,
+                            target,
+                            e,
+                        )
                         # Continue anyway - the new assignment might still work
 
             # Separate creation-time vs post-creation LUN parameters
             # Some attributes must be set during LUN creation, others can be set afterward
             # Use cached create params if available (same for all LUNs with same driver/target)
             if not lun_create_params_cache:
-                lun_create_params_cache['params'] = self.config_reader._get_lun_create_params(
-                    driver, target, lun_config.attributes)
+                lun_create_params_cache["params"] = (
+                    self.config_reader._get_lun_create_params(
+                        driver, target, lun_config.attributes
+                    )
+                )
 
             # Filter for this LUN's specific create params
-            lun_create_params = {k: v for k, v in lun_config.attributes.items()
-                                 if k in lun_create_params_cache.get('params', {})}
-            lun_post_params = {k: v for k, v in lun_config.attributes.items()
-                               if k not in lun_create_params}
+            lun_create_params = {
+                k: v
+                for k, v in lun_config.attributes.items()
+                if k in lun_create_params_cache.get("params", {})
+            }
+            lun_post_params = {
+                k: v
+                for k, v in lun_config.attributes.items()
+                if k not in lun_create_params
+            }
 
             # Build SCST management command with creation-time parameters
             # Format: "add {device} {lun_number} param1=value1;param2=value2;"
             if lun_create_params:
-                params_str = ';'.join([f"{k}={v}" for k, v in lun_create_params.items()])
+                params_str = ";".join(
+                    [f"{k}={v}" for k, v in lun_create_params.items()]
+                )
                 command = f"add {device} {lun_number} {params_str};"
             else:
                 # Simple assignment with no creation parameters
@@ -1067,10 +1377,8 @@ class TargetWriter:
                 self._set_lun_attributes(driver, target, lun_number, lun_post_params)
 
     def apply_group_assignments(
-            self,
-            driver: str,
-            target: str,
-            target_config: Dict[str, Any]) -> None:
+        self, driver: str, target: str, target_config: Dict[str, Any]
+    ) -> None:
         """Apply initiator group configurations for access control.
 
         Creates groups with initiator membership and LUN assignments. Uses optimized
@@ -1086,30 +1394,46 @@ class TargetWriter:
                 if self._group_config_matches(driver, target, group_name, group_config):
                     self.logger.debug(
                         "Group %s for %s/%s already exists with matching config, skipping",
-                        group_name, driver, target)
+                        group_name,
+                        driver,
+                        target,
+                    )
                     continue  # Group already correctly configured
                 else:
-                    self.logger.debug("Group %s for %s/%s exists but config differs", group_name, driver, target)
+                    self.logger.debug(
+                        "Group %s for %s/%s exists but config differs",
+                        group_name,
+                        driver,
+                        target,
+                    )
 
             # Create initiator group (will be no-op if already exists)
             try:
                 # Management command: "create {group_name}"
                 self.sysfs.write_sysfs(mgmt_path, f"create {group_name}")
-                self.logger.debug("Created group %s for %s/%s", group_name, driver, target)
+                self.logger.debug(
+                    "Created group %s for %s/%s", group_name, driver, target
+                )
             except SCSTError:
                 pass  # Group creation might fail if already exists
 
             # Phase 1: Configure initiator membership within the group
             # Each group defines which clients (initiators) can access through this path
-            group_initiators_path = (f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/"
-                                     f"{group_name}/initiators/mgmt")
+            group_initiators_path = (
+                f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/"
+                f"{group_name}/initiators/mgmt"
+            )
             for initiator in group_config.initiators:  # InitiatorGroupConfig object
                 try:
                     # Handle config file escaping: \\# and \\* become # and * in sysfs
-                    clean_initiator = initiator.replace('\\#', '#').replace('\\*', '*')
+                    clean_initiator = initiator.replace("\\#", "#").replace("\\*", "*")
                     # Management command: "add {initiator_name}"
-                    self.sysfs.write_sysfs(group_initiators_path, f"add {clean_initiator}")
-                    self.logger.debug("Added initiator %s to group %s", clean_initiator, group_name)
+                    self.sysfs.write_sysfs(
+                        group_initiators_path, f"add {clean_initiator}"
+                    )
+                    self.logger.debug(
+                        "Added initiator %s to group %s", clean_initiator, group_name
+                    )
                 except SCSTError:
                     pass  # Initiator addition might fail if already exists
 
@@ -1120,12 +1444,19 @@ class TargetWriter:
                 device_name = lun_config.device  # LunConfig object
                 try:
                     # Management command: "add {device} {lun_number}"
-                    self.sysfs.write_sysfs(group_luns_path, f"add {device_name} {lun_number}")
-                    self.logger.debug("Added LUN %s (%s) to group %s", lun_number, device_name, group_name)
+                    self.sysfs.write_sysfs(
+                        group_luns_path, f"add {device_name} {lun_number}"
+                    )
+                    self.logger.debug(
+                        "Added LUN %s (%s) to group %s",
+                        lun_number,
+                        device_name,
+                        group_name,
+                    )
                 except SCSTError:
                     pass  # LUN assignment might fail if already exists
 
-    def apply_config_enable_targets(self, config: 'SCSTConfig') -> None:
+    def apply_config_enable_targets(self, config: "SCSTConfig") -> None:
         """Activate configured targets to begin serving storage to initiators.
 
         Targets must be explicitly enabled after configuration to start accepting
@@ -1133,44 +1464,50 @@ class TargetWriter:
         """
         for driver_name, driver_config in config.drivers.items():
             for target_name, target_config in driver_config.targets.items():
-                enabled = target_config.attributes.get('enabled', '0')
-                if enabled == '1':
-                    enabled_path = f"{self.sysfs.SCST_TARGETS}/{driver_name}/{target_name}/enabled"
+                enabled = target_config.attributes.get("enabled", "0")
+                if enabled == "1":
+                    enabled_path = (
+                        f"{self.sysfs.SCST_TARGETS}/{driver_name}/{target_name}/enabled"
+                    )
                     try:
                         # Avoid unnecessary sysfs writes for performance
                         current_value = self.sysfs.read_sysfs(enabled_path)
-                        if current_value != '1':
-                            self.sysfs.write_sysfs(enabled_path, '1', check_result=False)
+                        if current_value != "1":
+                            self.sysfs.write_sysfs(
+                                enabled_path, "1", check_result=False
+                            )
                     except SCSTError:
                         # Fallback: attempt enable even if current state unknown
                         try:
-                            self.sysfs.write_sysfs(enabled_path, '1', check_result=False)
+                            self.sysfs.write_sysfs(
+                                enabled_path, "1", check_result=False
+                            )
                         except SCSTError:
                             pass
 
-    def apply_config_enable_drivers(self, config: 'SCSTConfig') -> None:
+    def apply_config_enable_drivers(self, config: "SCSTConfig") -> None:
         """Activate SCST protocol drivers to accept initiator connections.
 
         Drivers like iSCSI, FC, and SRP must be enabled to process protocol-specific
         requests and present targets to the network.
         """
         for driver_name, driver_config in config.drivers.items():
-            enabled = driver_config.attributes.get('enabled', '0')
-            if enabled == '1':
+            enabled = driver_config.attributes.get("enabled", "0")
+            if enabled == "1":
                 enabled_path = f"{self.sysfs.SCST_TARGETS}/{driver_name}/enabled"
                 try:
                     # Avoid unnecessary sysfs writes for performance
                     current_value = self.sysfs.read_sysfs(enabled_path)
-                    if current_value != '1':
-                        self.sysfs.write_sysfs(enabled_path, '1', check_result=False)
+                    if current_value != "1":
+                        self.sysfs.write_sysfs(enabled_path, "1", check_result=False)
                 except SCSTError:
                     # Fallback: attempt enable even if current state unknown
                     try:
-                        self.sysfs.write_sysfs(enabled_path, '1', check_result=False)
+                        self.sysfs.write_sysfs(enabled_path, "1", check_result=False)
                     except SCSTError:
                         pass
 
-    def apply_config_driver_attributes(self, config: 'SCSTConfig') -> None:
+    def apply_config_driver_attributes(self, config: "SCSTConfig") -> None:
         """Configure protocol driver parameters for optimal performance and behavior.
 
         Sets driver-specific attributes like threading models, queue depths, and
@@ -1191,26 +1528,36 @@ class TargetWriter:
 
             # Get mgmt interface info to identify mgmt-controlled attributes
             mgmt_info = self.config_reader._get_target_mgmt_info(driver_name)
-            driver_mgmt_attrs = mgmt_info.get('driver_attributes', set())
+            driver_mgmt_attrs = mgmt_info.get("driver_attributes", set())
 
             # Apply configuration attributes (enabled handled separately for proper sequencing)
             for attr_name, attr_value in driver_config.attributes.items():
-                if attr_name == 'enabled':
+                if attr_name == "enabled":
                     continue  # Skip enabled - must be set after other attributes
 
                 # Check if this is a mgmt-controlled driver attribute
                 if attr_name in driver_mgmt_attrs:
                     # Use incremental update for driver mgmt attributes (matches Perl behavior)
                     # Compare current vs desired values and only add/remove what changed
-                    self._update_driver_mgmt_attribute(driver_name, attr_name, attr_value)
+                    self._update_driver_mgmt_attribute(
+                        driver_name, attr_name, attr_value
+                    )
                 else:
                     # Use direct sysfs write for regular attributes
                     attr_path = f"{driver_path}/{attr_name}"
 
                     # Skip read-only attributes to avoid errors
-                    if not os.access(attr_path, os.W_OK) if os.path.exists(attr_path) else True:
+                    if (
+                        not os.access(attr_path, os.W_OK)
+                        if os.path.exists(attr_path)
+                        else True
+                    ):
                         if os.path.exists(attr_path):
-                            self.logger.debug("Skipping non-writable attribute %s.%s", driver_name, attr_name)
+                            self.logger.debug(
+                                "Skipping non-writable attribute %s.%s",
+                                driver_name,
+                                attr_name,
+                            )
                             continue
 
                     try:
@@ -1218,19 +1565,40 @@ class TargetWriter:
                         if self.sysfs.valid_path(attr_path):
                             current_value = self.sysfs.read_sysfs_attribute(attr_path)
                             if current_value != attr_value:
-                                self.sysfs.write_sysfs(attr_path, attr_value, check_result=False)
-                                self.logger.debug("Set driver attribute %s.%s = %s", driver_name, attr_name, attr_value)
+                                self.sysfs.write_sysfs(
+                                    attr_path, attr_value, check_result=False
+                                )
+                                self.logger.debug(
+                                    "Set driver attribute %s.%s = %s",
+                                    driver_name,
+                                    attr_name,
+                                    attr_value,
+                                )
                         else:
                             # Fallback: attempt write even if path validation failed
-                            self.sysfs.write_sysfs(attr_path, attr_value, check_result=False)
-                            self.logger.debug("Set driver attribute %s.%s = %s", driver_name, attr_name, attr_value)
+                            self.sysfs.write_sysfs(
+                                attr_path, attr_value, check_result=False
+                            )
+                            self.logger.debug(
+                                "Set driver attribute %s.%s = %s",
+                                driver_name,
+                                attr_name,
+                                attr_value,
+                            )
                     except SCSTError as e:
-                        self.logger.warning("Failed to set driver attribute %s.%s: %s", driver_name, attr_name, e)
+                        self.logger.warning(
+                            "Failed to set driver attribute %s.%s: %s",
+                            driver_name,
+                            attr_name,
+                            e,
+                        )
 
     def _disable_target_if_possible(self, driver_name: str, target_name: str) -> None:
         """Disable target to prevent new connections if it has an enabled attribute"""
         try:
-            enabled_path = f"{self.sysfs.SCST_TARGETS}/{driver_name}/{target_name}/enabled"
+            enabled_path = (
+                f"{self.sysfs.SCST_TARGETS}/{driver_name}/{target_name}/enabled"
+            )
             if self.sysfs.valid_path(enabled_path):
                 self.sysfs.write_sysfs(enabled_path, "0", check_result=False)
                 self.logger.debug("Disabled target %s/%s", driver_name, target_name)
@@ -1238,10 +1606,14 @@ class TargetWriter:
             # Some targets may not have an 'enabled' attribute - this is okay
             pass
 
-    def _force_close_target_sessions(self, driver_name: str, target_name: str, timeout: int = 300) -> bool:
+    def _force_close_target_sessions(
+        self, driver_name: str, target_name: str, timeout: int = 300
+    ) -> bool:
         """Force close active sessions and wait for them to terminate"""
 
-        sessions_path = f"{self.sysfs.SCST_TARGETS}/{driver_name}/{target_name}/sessions"
+        sessions_path = (
+            f"{self.sysfs.SCST_TARGETS}/{driver_name}/{target_name}/sessions"
+        )
         if not self.sysfs.valid_path(sessions_path):
             return True  # No sessions directory means no sessions
 
@@ -1255,7 +1627,12 @@ class TargetWriter:
         if not sessions:
             return True  # No active sessions
 
-        self.logger.debug("Found %s active sessions for target %s/%s", len(sessions), driver_name, target_name)
+        self.logger.debug(
+            "Found %s active sessions for target %s/%s",
+            len(sessions),
+            driver_name,
+            target_name,
+        )
 
         # Try to force close sessions that support it
         force_closable_sessions = set()
@@ -1269,7 +1646,9 @@ class TargetWriter:
                     force_closable_sessions.add(session)
                     self.logger.debug("Initiated force close for session %s", session)
                 except SCSTError as e:
-                    self.logger.warning("Failed to force close session %s: %s", session, e)
+                    self.logger.warning(
+                        "Failed to force close session %s: %s", session, e
+                    )
 
         if not force_closable_sessions:
             self.logger.debug("No sessions support force close")
@@ -1283,7 +1662,9 @@ class TargetWriter:
             # Check which sessions have actually closed
             try:
                 current_sessions = set(self.sysfs.list_directory(sessions_path))
-                current_sessions = {s for s in current_sessions if s != self.sysfs.MGMT_INTERFACE}
+                current_sessions = {
+                    s for s in current_sessions if s != self.sysfs.MGMT_INTERFACE
+                }
 
                 # Remove sessions that are no longer active
                 closed_sessions = remaining_sessions - current_sessions
@@ -1299,10 +1680,16 @@ class TargetWriter:
                 break
 
         if remaining_sessions:
-            self.logger.warning("Sessions %s did not close within %s seconds", remaining_sessions, timeout)
+            self.logger.warning(
+                "Sessions %s did not close within %s seconds",
+                remaining_sessions,
+                timeout,
+            )
             return False
 
-        self.logger.debug("All sessions closed for target %s/%s", driver_name, target_name)
+        self.logger.debug(
+            "All sessions closed for target %s/%s", driver_name, target_name
+        )
         return True
 
     def remove_target(self, driver_name: str, target_name: str) -> None:
@@ -1315,7 +1702,11 @@ class TargetWriter:
 
             # Force close any active sessions
             if not self._force_close_target_sessions(driver_name, target_name):
-                self.logger.warning("Some sessions remained active for target %s/%s", driver_name, target_name)
+                self.logger.warning(
+                    "Some sessions remained active for target %s/%s",
+                    driver_name,
+                    target_name,
+                )
 
             # Clear all LUNs first
             luns_mgmt = f"{target_path}/luns/mgmt"
@@ -1340,10 +1731,17 @@ class TargetWriter:
             self.sysfs.write_sysfs(driver_mgmt, f"del_target {target_name}")
 
         except SCSTError as e:
-            self.logger.warning("Failed to remove target %s/%s: %s", driver_name, target_name, e)
+            self.logger.warning(
+                "Failed to remove target %s/%s: %s", driver_name, target_name, e
+            )
 
-    def _remove_obsolete_luns(self, driver_name: str, target_name: str,
-                              current_target: 'TargetConfig', new_target: 'TargetConfig') -> None:
+    def _remove_obsolete_luns(
+        self,
+        driver_name: str,
+        target_name: str,
+        current_target: "TargetConfig",
+        new_target: "TargetConfig",
+    ) -> None:
         """Remove LUNs that are not in the new configuration"""
         try:
             current_luns = set(current_target.luns.keys())
@@ -1351,15 +1749,22 @@ class TargetWriter:
             luns_to_remove = current_luns - new_luns
 
             if luns_to_remove:
-                luns_mgmt = f"{self.sysfs.SCST_TARGETS}/{driver_name}/{target_name}/luns/mgmt"
+                luns_mgmt = (
+                    f"{self.sysfs.SCST_TARGETS}/{driver_name}/{target_name}/luns/mgmt"
+                )
                 for lun_number in luns_to_remove:
                     self.sysfs.write_sysfs(luns_mgmt, f"del {lun_number}")
 
         except SCSTError as e:
             self.logger.warning("Failed to remove obsolete LUNs: %s", e)
 
-    def _remove_obsolete_groups(self, driver_name: str, target_name: str,
-                                current_target: 'TargetConfig', new_target: 'TargetConfig') -> None:
+    def _remove_obsolete_groups(
+        self,
+        driver_name: str,
+        target_name: str,
+        current_target: "TargetConfig",
+        new_target: "TargetConfig",
+    ) -> None:
         """Remove initiator groups that are not in the new configuration"""
         try:
             current_groups = set(current_target.groups.keys())
@@ -1370,8 +1775,10 @@ class TargetWriter:
                 groups_mgmt = f"{self.sysfs.SCST_TARGETS}/{driver_name}/{target_name}/ini_groups/mgmt"
                 for group_name in groups_to_remove:
                     # Clear group LUNs first
-                    group_luns_mgmt = (f"{self.sysfs.SCST_TARGETS}/{driver_name}/{target_name}"
-                                       f"/ini_groups/{group_name}/luns/mgmt")
+                    group_luns_mgmt = (
+                        f"{self.sysfs.SCST_TARGETS}/{driver_name}/{target_name}"
+                        f"/ini_groups/{group_name}/luns/mgmt"
+                    )
                     if self.sysfs.valid_path(group_luns_mgmt):
                         self.sysfs.write_sysfs(group_luns_mgmt, "clear")
                     # Remove the group
@@ -1381,9 +1788,8 @@ class TargetWriter:
             self.logger.warning("Failed to remove obsolete groups: %s", e)
 
     def _remove_obsolete_driver_attributes(
-            self,
-            current_config: 'SCSTConfig',
-            new_config: 'SCSTConfig') -> None:
+        self, current_config: "SCSTConfig", new_config: "SCSTConfig"
+    ) -> None:
         """Remove driver attributes that are no longer present in the new configuration"""
         for driver_name, current_driver_config in current_config.drivers.items():
             # Skip if driver not in new config (will be handled by driver removal)
@@ -1399,7 +1805,9 @@ class TargetWriter:
                 if attr_name not in new_attributes:
                     self._remove_driver_attribute(driver_name, attr_name)
 
-    def _update_driver_mgmt_attribute(self, driver_name: str, attr_name: str, desired_value: str) -> None:
+    def _update_driver_mgmt_attribute(
+        self, driver_name: str, attr_name: str, desired_value: str
+    ) -> None:
         """Incrementally update a driver management attribute by comparing current vs desired values.
 
         This implements the Perl scstadmin logic for driver dynamic attributes:
@@ -1420,7 +1828,7 @@ class TargetWriter:
         # Parse desired values from config
         desired_values = set()
         if desired_value:
-            for value in desired_value.split(';'):
+            for value in desired_value.split(";"):
                 value = value.strip()
                 if value:
                     desired_values.add(value)
@@ -1445,54 +1853,92 @@ class TargetWriter:
             try:
                 command = f"del_attribute {attr_name} {value}"
                 self.sysfs.write_sysfs(driver_mgmt, command, check_result=False)
-                self.logger.debug("Removed driver mgmt attribute %s.%s = %s", driver_name, attr_name, value)
+                self.logger.debug(
+                    "Removed driver mgmt attribute %s.%s = %s",
+                    driver_name,
+                    attr_name,
+                    value,
+                )
             except SCSTError as e:
-                self.logger.warning("Failed to remove driver mgmt attribute %s.%s=%s: %s",
-                                    driver_name, attr_name, value, e)
+                self.logger.warning(
+                    "Failed to remove driver mgmt attribute %s.%s=%s: %s",
+                    driver_name,
+                    attr_name,
+                    value,
+                    e,
+                )
 
         # Add new values
         for value in values_to_add:
             try:
                 command = f"add_attribute {attr_name} {value}"
                 self.sysfs.write_sysfs(driver_mgmt, command, check_result=False)
-                self.logger.debug("Added driver mgmt attribute %s.%s = %s", driver_name, attr_name, value)
+                self.logger.debug(
+                    "Added driver mgmt attribute %s.%s = %s",
+                    driver_name,
+                    attr_name,
+                    value,
+                )
             except SCSTError as e:
-                self.logger.warning("Failed to add driver mgmt attribute %s.%s=%s: %s",
-                                    driver_name, attr_name, value, e)
+                self.logger.warning(
+                    "Failed to add driver mgmt attribute %s.%s=%s: %s",
+                    driver_name,
+                    attr_name,
+                    value,
+                    e,
+                )
 
     def _remove_driver_attribute(self, driver_name: str, attr_name: str) -> None:
         """Remove a specific driver attribute by resetting it to default value or using mgmt commands"""
         try:
             # Check if this is a mgmt-controlled driver attribute
             mgmt_info = self.config_reader._get_target_mgmt_info(driver_name)
-            driver_mgmt_attrs = mgmt_info.get('driver_attributes', set())
+            driver_mgmt_attrs = mgmt_info.get("driver_attributes", set())
 
             if attr_name in driver_mgmt_attrs:
                 # Use incremental update with empty desired value to remove all
-                self._update_driver_mgmt_attribute(driver_name, attr_name, '')
+                self._update_driver_mgmt_attribute(driver_name, attr_name, "")
                 return
 
             # For regular sysfs attributes, reset to default value
             attr_path = f"{self.sysfs.SCST_TARGETS}/{driver_name}/{attr_name}"
 
             # Skip if attribute file doesn't exist or isn't writable
-            if not self.sysfs.valid_path(attr_path) or not os.access(attr_path, os.W_OK):
-                self.logger.debug("Cannot remove driver attribute %s.%s: not accessible", driver_name, attr_name)
+            if not self.sysfs.valid_path(attr_path) or not os.access(
+                attr_path, os.W_OK
+            ):
+                self.logger.debug(
+                    "Cannot remove driver attribute %s.%s: not accessible",
+                    driver_name,
+                    attr_name,
+                )
                 return
 
             # Get the default value for this attribute if possible
-            default_value = self.config_reader._get_driver_attribute_default(driver_name, attr_name)
+            default_value = self.config_reader._get_driver_attribute_default(
+                driver_name, attr_name
+            )
 
             if default_value is not None:
                 current_value = self.sysfs.read_sysfs_attribute(attr_path)
                 if current_value != default_value:
                     self.sysfs.write_sysfs(attr_path, default_value, check_result=False)
-                    self.logger.info("Reset driver attribute %s.%s to default: %s",
-                                     driver_name, attr_name, default_value)
+                    self.logger.info(
+                        "Reset driver attribute %s.%s to default: %s",
+                        driver_name,
+                        attr_name,
+                        default_value,
+                    )
             else:
                 # Try to reset to system default by writing newline
-                self.sysfs.write_sysfs(attr_path, '\n', check_result=False)
-                self.logger.debug("Reset driver attribute %s.%s to system default", driver_name, attr_name)
+                self.sysfs.write_sysfs(attr_path, "\n", check_result=False)
+                self.logger.debug(
+                    "Reset driver attribute %s.%s to system default",
+                    driver_name,
+                    attr_name,
+                )
 
         except SCSTError as e:
-            self.logger.warning("Failed to remove driver attribute %s.%s: %s", driver_name, attr_name, e)
+            self.logger.warning(
+                "Failed to remove driver attribute %s.%s: %s", driver_name, attr_name, e
+            )

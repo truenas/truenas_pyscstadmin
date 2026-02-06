@@ -43,10 +43,14 @@ class DeviceReader:
                 handler_type = os.path.basename(target)
                 return handler_type
         except (OSError, IOError) as e:
-            self.logger.warning("Failed to read handler type for device '%s': %s", device_name, e)
+            self.logger.warning(
+                "Failed to read handler type for device '%s': %s", device_name, e
+            )
         return None
 
-    def _create_minimal_device_config(self, device_name: str, handler_type: str) -> Optional['DeviceConfig']:
+    def _create_minimal_device_config(
+        self, device_name: str, handler_type: str
+    ) -> Optional["DeviceConfig"]:
         """Create a minimal DeviceConfig object for cleanup operations.
 
         Args:
@@ -58,13 +62,24 @@ class DeviceReader:
         """
         try:
             # Create minimal device config with empty filename for cleanup operations
-            minimal_attrs = {'filename': ''}  # Required field for all device types
-            device_config = create_device_config(device_name, handler_type, minimal_attrs)
+            minimal_attrs = {"filename": ""}  # Required field for all device types
+            device_config = create_device_config(
+                device_name, handler_type, minimal_attrs
+            )
             if device_config is None:
-                self.logger.error("Unknown handler type '%s' for device '%s', skipping", handler_type, device_name)
+                self.logger.error(
+                    "Unknown handler type '%s' for device '%s', skipping",
+                    handler_type,
+                    device_name,
+                )
             return device_config
         except (ValueError, TypeError) as e:
-            self.logger.error("Failed to create DeviceConfig for '%s' (handler: %s): %s", device_name, handler_type, e)
+            self.logger.error(
+                "Failed to create DeviceConfig for '%s' (handler: %s): %s",
+                device_name,
+                handler_type,
+                e,
+            )
             return None
 
     def _safe_read_attribute(self, attr_path: str) -> Optional[str]:
@@ -76,8 +91,9 @@ class DeviceReader:
             pass
         return None
 
-    def _get_current_device_attrs(self, handler: str, device_name: str,
-                                  filter_attrs: Optional[Set[str]] = None) -> Dict[str, str]:
+    def _get_current_device_attrs(
+        self, handler: str, device_name: str, filter_attrs: Optional[Set[str]] = None
+    ) -> Dict[str, str]:
         """Read current device attributes from SCST sysfs interface.
 
         This method reads the live attribute values for an existing SCST device
@@ -112,7 +128,7 @@ class DeviceReader:
             # If filter is provided, only read those specific attributes
             if filter_attrs:
                 for attr in filter_attrs:
-                    if attr == 'handler':  # Skip handler attribute
+                    if attr == "handler":  # Skip handler attribute
                         continue
                     attr_path = os.path.join(device_path, attr)
                     value = self._safe_read_attribute(attr_path)
@@ -122,7 +138,7 @@ class DeviceReader:
                 # Read all attribute files in the device directory (fallback)
                 for item in os.listdir(device_path):
                     item_path = os.path.join(device_path, item)
-                    if not item.startswith('.'):
+                    if not item.startswith("."):
                         value = self._safe_read_attribute(item_path)
                         if value is not None:
                             attrs[item] = value
@@ -176,7 +192,9 @@ class DeviceReader:
 
         for device in self.sysfs.list_directory(devices_path):
             if handler_type := self._get_device_handler_type(device):
-                if device_config := self._create_minimal_device_config(device, handler_type):
+                if device_config := self._create_minimal_device_config(
+                    device, handler_type
+                ):
                     devices[device] = device_config
 
         return devices

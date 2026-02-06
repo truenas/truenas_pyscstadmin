@@ -13,6 +13,7 @@ from typing import Dict, Set, Optional
 from ..sysfs import SCSTSysfs
 from ..exceptions import SCSTError
 from ..config import DriverConfig, TargetConfig
+from ..constants import SCSTConstants
 
 
 class TargetReader:
@@ -21,13 +22,6 @@ class TargetReader:
     This class handles target discovery, driver attribute management, and
     LUN operations within the SCST configuration system.
     """
-
-    # Known driver attributes that should not be treated as targets during cleanup
-    DRIVER_ATTRIBUTES = {
-        'copy_manager': {'copy_manager_tgt', 'dif_capabilities', 'allow_not_connected_copy'},
-        'iscsi': {'link_local', 'isns_entity_name', 'internal_portal', 'trace_level',
-                  'open_state', 'version', 'iSNSServer', 'enabled', 'mgmt'}
-    }
 
     def __init__(self, sysfs: SCSTSysfs):
         self.sysfs = sysfs
@@ -77,9 +71,9 @@ class TargetReader:
             - Driver vs target attribute distinction determines command format
         """
         result = {
-            'create_params': set(),        # Target creation parameters
-            'driver_attributes': set(),    # Driver-level mgmt attributes
-            'target_attributes': set()     # Target-level mgmt attributes
+            "create_params": set(),  # Target creation parameters
+            "driver_attributes": set(),  # Driver-level mgmt attributes
+            "target_attributes": set(),  # Target-level mgmt attributes
         }
 
         try:
@@ -97,7 +91,7 @@ class TargetReader:
                     for param in params_str.split(","):
                         param = param.strip()
                         if param:
-                            result['create_params'].add(param)
+                            result["create_params"].add(param)
 
                 elif "The following target driver attributes available:" in line:
                     _, attrs_str = line.split(":", 1)
@@ -105,7 +99,7 @@ class TargetReader:
                     for attr in attrs_str.split(","):
                         attr = attr.strip()
                         if attr:
-                            result['driver_attributes'].add(attr)
+                            result["driver_attributes"].add(attr)
 
                 elif "The following target attributes available:" in line:
                     _, attrs_str = line.split(":", 1)
@@ -113,7 +107,7 @@ class TargetReader:
                     for attr in attrs_str.split(","):
                         attr = attr.strip()
                         if attr:
-                            result['target_attributes'].add(attr)
+                            result["target_attributes"].add(attr)
 
         except SCSTError:
             # If we can't read mgmt interface, return empty sets
@@ -139,19 +133,23 @@ class TargetReader:
 
         return self._mgmt_cache[cache_key]
 
-    def _get_target_create_params(self, driver_name: str, target_attrs: Dict[str, str]) -> Dict[str, str]:
+    def _get_target_create_params(
+        self, driver_name: str, target_attrs: Dict[str, str]
+    ) -> Dict[str, str]:
         """Get target creation parameters from driver mgmt interface"""
         mgmt_info = self._get_target_mgmt_info(driver_name)
 
         # Return only attributes that are valid creation parameters
         create_params = {}
         for attr, value in target_attrs.items():
-            if attr in mgmt_info['create_params']:
+            if attr in mgmt_info["create_params"]:
                 create_params[attr] = value
 
         return create_params
 
-    def _get_lun_create_params(self, driver: str, target: str, lun_attrs: Dict[str, str]) -> Dict[str, str]:
+    def _get_lun_create_params(
+        self, driver: str, target: str, lun_attrs: Dict[str, str]
+    ) -> Dict[str, str]:
         """Get LUN assignment creation parameters from luns mgmt interface"""
         create_params = {}
 
@@ -195,7 +193,7 @@ class TargetReader:
             raw_stripped = raw_value.strip()
 
             # Check if it has the [key] suffix indicating non-default value
-            if raw_stripped.endswith('[key]'):
+            if raw_stripped.endswith("[key]"):
                 # Strip off the [key] suffix to get clean value
                 clean_value = raw_stripped[:-5].strip()
                 return clean_value
@@ -205,8 +203,9 @@ class TargetReader:
         except SCSTError:
             return None
 
-    def _get_current_target_attrs(self, driver: str, target_name: str,
-                                  filter_attrs: Optional[Set[str]] = None) -> Dict[str, str]:
+    def _get_current_target_attrs(
+        self, driver: str, target_name: str, filter_attrs: Optional[Set[str]] = None
+    ) -> Dict[str, str]:
         """Read current target attribute values for configuration comparison.
 
         Handles multi-value attributes (IncomingUser, etc.) and skips creation-time
@@ -233,12 +232,12 @@ class TargetReader:
                 for attr in filter_attrs:
                     # Skip creation-time-only params (can't be read/compared post-creation)
                     # Matches Perl scstladmin filterCreateAttributes(TRUE) behavior
-                    if attr in mgmt_info['create_params']:
+                    if attr in mgmt_info["create_params"]:
                         continue
 
                     # Multi-value attributes: IncomingUser, OutgoingUser, etc. can have multiple entries
                     # SCST stores as: IncomingUser, IncomingUser1, IncomingUser2, IncomingUser3...
-                    if attr in mgmt_info['target_attributes']:
+                    if attr in mgmt_info["target_attributes"]:
                         collected_values = []
 
                         # Phase 1: Try base attribute name (IncomingUser -> /sys/.../IncomingUser)
@@ -251,7 +250,9 @@ class TargetReader:
                         # Continue until we hit a non-existent numbered attribute
                         counter = 1
                         while True:
-                            numbered_attr_path = os.path.join(target_path, f"{attr}{counter}")
+                            numbered_attr_path = os.path.join(
+                                target_path, f"{attr}{counter}"
+                            )
                             value = self._safe_read_attribute(numbered_attr_path)
                             if value is not None:  # Attribute file exists
                                 if value:  # Non-empty value
@@ -262,7 +263,7 @@ class TargetReader:
 
                         # Store as semicolon-separated if multiple values
                         if collected_values:
-                            attrs[attr] = ';'.join(collected_values)
+                            attrs[attr] = ";".join(collected_values)
 
                     else:
                         # Regular attribute - read single file
@@ -277,7 +278,11 @@ class TargetReader:
                 # Read all attribute files in the target directory (fallback)
                 for item in os.listdir(target_path):
                     item_path = os.path.join(target_path, item)
-                    if not item.startswith('.') and item not in ['luns', 'ini_groups', 'sessions']:
+                    if not item.startswith(".") and item not in [
+                        "luns",
+                        "ini_groups",
+                        "sessions",
+                    ]:
                         value = self._safe_read_attribute(item_path)
                         if value is not None:
                             attrs[item] = value
@@ -288,7 +293,9 @@ class TargetReader:
     def _get_current_lun_device(self, driver: str, target: str, lun_number: str) -> str:
         """Get the device currently assigned to a LUN"""
         try:
-            device_path = f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/luns/{lun_number}/device"
+            device_path = (
+                f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/luns/{lun_number}/device"
+            )
             if os.path.exists(device_path) and os.path.islink(device_path):
                 # Follow the symlink to get the device name
                 link_target = os.readlink(device_path)
@@ -298,11 +305,15 @@ class TargetReader:
             pass
         return ""
 
-    def _get_current_group_lun_device(self, driver: str, target: str, group_name: str, lun_number: str) -> str:
+    def _get_current_group_lun_device(
+        self, driver: str, target: str, group_name: str, lun_number: str
+    ) -> str:
         """Get the device currently assigned to a group LUN"""
         try:
-            device_path = (f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/"
-                           f"{group_name}/luns/{lun_number}/device")
+            device_path = (
+                f"{self.sysfs.SCST_TARGETS}/{driver}/{target}/ini_groups/"
+                f"{group_name}/luns/{lun_number}/device"
+            )
             if os.path.exists(device_path) and os.path.islink(device_path):
                 # Follow the symlink to get the device name
                 link_target = os.readlink(device_path)
@@ -312,15 +323,17 @@ class TargetReader:
             pass
         return ""
 
-    def _get_driver_attribute_default(self, driver_name: str, attr_name: str) -> Optional[str]:
+    def _get_driver_attribute_default(
+        self, driver_name: str, attr_name: str
+    ) -> Optional[str]:
         """Get the default value for a driver attribute"""
         # Known defaults for common attributes
         defaults = {
-            'iscsi': {
-                'iSNSServer': '\n',  # Reset to system default
-                'internal_portal': '\n',  # Reset to system default
-                'link_local': '1',  # Default is enabled
-                'trace_level': '0'  # Default trace level
+            "iscsi": {
+                "iSNSServer": "\n",  # Reset to system default
+                "internal_portal": "\n",  # Reset to system default
+                "link_local": "1",  # Default is enabled
+                "trace_level": "0",  # Default trace level
             }
         }
 
@@ -373,25 +386,31 @@ class TargetReader:
 
         for driver in self.sysfs.list_directory(targets_path):
             driver_path = f"{targets_path}/{driver}"
-            driver_config = {'targets': {}, 'attributes': {}}
+            driver_config = {"targets": {}, "attributes": {}}
 
             # Read driver attributes from live system (only non-default values)
-            driver_attrs = self.DRIVER_ATTRIBUTES.get(driver, set())
+            driver_attrs = SCSTConstants.DRIVER_ATTRIBUTES.get(driver, set())
             for attr_name in driver_attrs:
                 # Skip non-attribute entries
-                if attr_name in {self.sysfs.MGMT_INTERFACE, 'type', 'trace_level', 'open_state', 'version'}:
+                if attr_name in {
+                    self.sysfs.MGMT_INTERFACE,
+                    "type",
+                    "trace_level",
+                    "open_state",
+                    "version",
+                }:
                     continue
 
                 attr_path = f"{driver_path}/{attr_name}"
                 if self.sysfs.valid_path(attr_path):
                     attr_value = self._read_attribute_if_non_default(attr_path)
                     if attr_value is not None:
-                        driver_config['attributes'][attr_name] = attr_value
+                        driver_config["attributes"][attr_name] = attr_value
 
             # Read driver mgmt attributes (IncomingUser, OutgoingUser, etc.)
             # These are dynamically created via add_attribute commands
             mgmt_info = self._get_target_mgmt_info(driver)
-            driver_mgmt_attrs = mgmt_info.get('driver_attributes', set())
+            driver_mgmt_attrs = mgmt_info.get("driver_attributes", set())
             for attr_name in driver_mgmt_attrs:
                 # Use glob to find all variants (IncomingUser, IncomingUser1, IncomingUser2, etc.)
                 # Numbered variants may have gaps (e.g., IncomingUser, IncomingUser2, IncomingUser5)
@@ -403,12 +422,14 @@ class TargetReader:
 
                 # Store as semicolon-separated if multiple values
                 if collected_values:
-                    driver_config['attributes'][attr_name] = ';'.join(collected_values)
+                    driver_config["attributes"][attr_name] = ";".join(collected_values)
 
             # Read targets for this driver
             # Get known driver attributes to skip for target detection
-            driver_attrs_for_skip = self.DRIVER_ATTRIBUTES.get(driver, set())
-            driver_attrs_for_skip.update({self.sysfs.MGMT_INTERFACE, self.sysfs.ENABLED_ATTR})  # Always skip these
+            driver_attrs_for_skip = SCSTConstants.DRIVER_ATTRIBUTES.get(driver, set())
+            driver_attrs_for_skip.update(
+                {self.sysfs.MGMT_INTERFACE, self.sysfs.ENABLED_ATTR}
+            )  # Always skip these
 
             for target in self.sysfs.list_directory(driver_path):
                 if target not in driver_attrs_for_skip:
@@ -417,18 +438,23 @@ class TargetReader:
                     if os.path.isdir(target_path):
                         # Verify it's a real target by checking for target-specific subdirectories
                         has_luns = self.sysfs.valid_path(f"{target_path}/luns")
-                        has_ini_groups = self.sysfs.valid_path(f"{target_path}/ini_groups")
+                        has_ini_groups = self.sysfs.valid_path(
+                            f"{target_path}/ini_groups"
+                        )
                         has_sessions = self.sysfs.valid_path(f"{target_path}/sessions")
 
                         if has_luns or has_ini_groups or has_sessions:
                             # Create TargetConfig object for this target
                             target_config_dict = {
-                                'luns': {},
-                                'groups': {},
-                                'attributes': {}
+                                "luns": {},
+                                "groups": {},
+                                "attributes": {},
                             }
-                            driver_config['targets'][target] = TargetConfig.from_config_dict(
-                                target, target_config_dict)
+                            driver_config["targets"][target] = (
+                                TargetConfig.from_config_dict(
+                                    target, target_config_dict
+                                )
+                            )
 
             # Create DriverConfig object from collected data
             drivers[driver] = DriverConfig.from_config_dict(driver, driver_config)

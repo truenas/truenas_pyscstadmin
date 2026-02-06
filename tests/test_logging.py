@@ -9,12 +9,12 @@ import logging
 from scstadmin.parser import SCSTConfigParser
 
 
-def setup_test_logging(level='INFO'):
+def setup_test_logging(level="INFO"):
     """Setup logging for testing"""
     logging.basicConfig(
         level=getattr(logging, level),
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%H:%M:%S'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%H:%M:%S",
     )
 
 
@@ -25,7 +25,7 @@ def test_logging_levels():
 
     # Test parsing with INFO level
     print("1. Testing Configuration Parsing (INFO level):")
-    setup_test_logging('INFO')
+    setup_test_logging("INFO")
     parser = SCSTConfigParser()
 
     sample_config = """
@@ -46,7 +46,7 @@ TARGET_DRIVER iscsi {
 
     print()
     print("2. Testing Default WARNING level (should show less output):")
-    setup_test_logging('WARNING')
+    setup_test_logging("WARNING")
 
     try:
         parser.parse_config_text(sample_config)
@@ -56,7 +56,7 @@ TARGET_DRIVER iscsi {
 
     print()
     print("3. Testing DEBUG level (should show detailed output):")
-    setup_test_logging('DEBUG')
+    setup_test_logging("DEBUG")
 
     try:
         parser.parse_config_text(sample_config)
@@ -65,7 +65,7 @@ TARGET_DRIVER iscsi {
         print(f"   ❌ Parsing failed: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_logging_levels()
     print()
     print("=== Logging Test Summary ===")

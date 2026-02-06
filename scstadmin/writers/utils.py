@@ -1,13 +1,14 @@
 """
 Utility functions for SCST writers
 """
+
 import os
 import logging
 from typing import Dict, Set, Optional
 
 from ..constants import SCSTConstants
 
-logger = logging.getLogger('scstadmin.writers.utils')
+logger = logging.getLogger("scstadmin.writers.utils")
 
 
 def entity_exists(entity_path: str) -> bool:
@@ -18,11 +19,13 @@ def entity_exists(entity_path: str) -> bool:
         return False
 
 
-def attrs_config_differs(desired_attrs: Dict[str, str],
-                         current_attrs: Dict[str, str],
-                         skip_attrs: Optional[Set[str]] = None,
-                         removable_attrs: Optional[Set[str]] = None,
-                         entity_type: str = "attribute") -> bool:
+def attrs_config_differs(
+    desired_attrs: Dict[str, str],
+    current_attrs: Dict[str, str],
+    skip_attrs: Optional[Set[str]] = None,
+    removable_attrs: Optional[Set[str]] = None,
+    entity_type: str = "attribute",
+) -> bool:
     """Compare desired configuration attributes with current live values.
 
     This method performs intelligent configuration comparison to determine if
@@ -68,7 +71,8 @@ def attrs_config_differs(desired_attrs: Dict[str, str],
 
         if current_value != desired_value:
             logger.debug(
-                f"{entity_type} attribute '{attr}' differs: current='{current_value}', desired='{desired_value}'")
+                f"{entity_type} attribute '{attr}' differs: current='{current_value}', desired='{desired_value}'"
+            )
             return True
 
     # Check for removable attributes that exist in current but not in desired
