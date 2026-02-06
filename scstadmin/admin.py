@@ -45,13 +45,6 @@ class SCSTAdmin:
 
     VERSION = "SCST Python Configurator v1.0.0"
 
-    # Known driver attributes that should not be treated as targets during cleanup
-    DRIVER_ATTRIBUTES = {
-        'copy_manager': {'dif_capabilities', 'allow_not_connected_copy'},
-        'iscsi': {'link_local', 'isns_entity_name', 'internal_portal', 'trace_level',
-                  'open_state', 'version', 'iSNSServer', 'enabled', 'mgmt'}
-    }
-
     def __init__(self, timeout: int = SCSTConstants.DEFAULT_TIMEOUT, log_level: str = "WARNING"):
         self.sysfs = SCSTSysfs(timeout)
         self.parser = SCSTConfigParser()
@@ -349,7 +342,7 @@ class SCSTAdmin:
                 driver_path = f"{self.sysfs.SCST_TARGETS}/{driver}"
 
                 # Get known driver attributes to skip
-                driver_attrs = self.DRIVER_ATTRIBUTES.get(driver, set())
+                driver_attrs = SCSTConstants.DRIVER_ATTRIBUTES.get(driver, set())
                 driver_attrs.update({self.sysfs.MGMT_INTERFACE, self.sysfs.ENABLED_ATTR})
 
                 for item in self.sysfs.list_directory(driver_path):

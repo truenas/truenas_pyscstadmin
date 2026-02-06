@@ -893,7 +893,7 @@ class TargetWriter:
                 return  # Driver not loaded or doesn't exist
 
             existing_targets = self.sysfs.list_directory(driver_path)
-            driver_attrs = self.DRIVER_ATTRIBUTES.get(driver_name, set())
+            driver_attrs = SCSTConstants.DRIVER_ATTRIBUTES.get(driver_name, set())
 
             for target in existing_targets:
                 # Filter out driver-level attributes and management interfaces

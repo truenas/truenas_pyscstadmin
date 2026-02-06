@@ -13,6 +13,7 @@ from typing import Dict, Set, Optional
 from ..sysfs import SCSTSysfs
 from ..exceptions import SCSTError
 from ..config import DriverConfig, TargetConfig
+from ..constants import SCSTConstants
 
 
 class TargetReader:
@@ -21,13 +22,6 @@ class TargetReader:
     This class handles target discovery, driver attribute management, and
     LUN operations within the SCST configuration system.
     """
-
-    # Known driver attributes that should not be treated as targets during cleanup
-    DRIVER_ATTRIBUTES = {
-        'copy_manager': {'copy_manager_tgt', 'dif_capabilities', 'allow_not_connected_copy'},
-        'iscsi': {'link_local', 'isns_entity_name', 'internal_portal', 'trace_level',
-                  'open_state', 'version', 'iSNSServer', 'enabled', 'mgmt'}
-    }
 
     def __init__(self, sysfs: SCSTSysfs):
         self.sysfs = sysfs
@@ -376,7 +370,7 @@ class TargetReader:
             driver_config = {'targets': {}, 'attributes': {}}
 
             # Read driver attributes from live system (only non-default values)
-            driver_attrs = self.DRIVER_ATTRIBUTES.get(driver, set())
+            driver_attrs = SCSTConstants.DRIVER_ATTRIBUTES.get(driver, set())
             for attr_name in driver_attrs:
                 # Skip non-attribute entries
                 if attr_name in {self.sysfs.MGMT_INTERFACE, 'type', 'trace_level', 'open_state', 'version'}:
@@ -407,7 +401,7 @@ class TargetReader:
 
             # Read targets for this driver
             # Get known driver attributes to skip for target detection
-            driver_attrs_for_skip = self.DRIVER_ATTRIBUTES.get(driver, set())
+            driver_attrs_for_skip = SCSTConstants.DRIVER_ATTRIBUTES.get(driver, set())
             driver_attrs_for_skip.update({self.sysfs.MGMT_INTERFACE, self.sysfs.ENABLED_ATTR})  # Always skip these
 
             for target in self.sysfs.list_directory(driver_path):

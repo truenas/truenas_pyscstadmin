@@ -46,6 +46,15 @@ class SCSTConstants:
         'copy_manager': None,  # Built into scst core
     }
 
+    # Driver attributes that should be filtered when scanning for targets
+    # These are driver-level configuration files/directories, not actual targets
+    DRIVER_ATTRIBUTES = {
+        'copy_manager': {'copy_manager_tgt', 'dif_capabilities', 'allow_not_connected_copy'},
+        'iscsi': {'link_local', 'isns_entity_name', 'internal_portal', 'trace_level',
+                  'open_state', 'version', 'iSNSServer', 'enabled', 'mgmt'},
+        'qla2x00t': {'trace_level', 'version', 'mgmt'}
+    }
+
     # Optional modules for specific architectures/drivers
     # Handle isert_scst elsewhere
     ISCSI_OPT_MODULES = ['crc32c']
