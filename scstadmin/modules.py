@@ -35,7 +35,7 @@ class SCSTModuleManager:
         Returns:
             Set of module names that need to be loaded
         """
-        required_modules = {'scst'}  # Base SCST module always needed
+        required_modules = {"scst"}  # Base SCST module always needed
 
         # Map handlers to modules
         for handler_name in config.handlers:
@@ -50,12 +50,12 @@ class SCSTModuleManager:
                 required_modules.add(module)
 
         # Add iSCSI-specific modules if iSCSI driver is used
-        if 'iscsi' in config.drivers:
+        if "iscsi" in config.drivers:
             # Add base iSCSI modules
             required_modules.update(SCSTConstants.ISCSI_OPT_MODULES)
 
             # Add x86-specific CRC acceleration if available
-            if platform.machine() in ['x86_64', 'i686']:
+            if platform.machine() in ["x86_64", "i686"]:
                 required_modules.update(SCSTConstants.ISCSI_X86_MODULES)
 
         return required_modules
@@ -76,12 +76,16 @@ class SCSTModuleManager:
             True if module is loaded, False otherwise
         """
         # Special handling for crc32c - check for any implementation
-        if module_name == 'crc32c':
-            crc32c_modules = ["/sys/module/crc32c_intel", "/sys/module/crc32c_generic", "/sys/module/libcrc32c"]
+        if module_name == "crc32c":
+            crc32c_modules = [
+                "/sys/module/crc32c_intel",
+                "/sys/module/crc32c_generic",
+                "/sys/module/libcrc32c",
+            ]
             return any(os.path.exists(module_path) for module_path in crc32c_modules)
 
         # Convert hyphens to underscores for /sys/module/ path
-        sysfs_name = module_name.replace('-', '_')
+        sysfs_name = module_name.replace("-", "_")
         return os.path.exists(f"/sys/module/{sysfs_name}")
 
     def load_module(self, module_name: str) -> bool:
@@ -95,21 +99,29 @@ class SCSTModuleManager:
         """
         try:
             result = subprocess.run(
-                ['modprobe', module_name],
-                capture_output=True,
-                text=True,
-                timeout=30
+                ["modprobe", module_name], capture_output=True, text=True, timeout=30
             )
             if result.returncode == 0:
                 self.logger.info("Successfully loaded module: %s", module_name)
                 return True
             else:
                 # Don't treat optional module failures as errors
-                if module_name in SCSTConstants.ISCSI_OPT_MODULES or module_name in SCSTConstants.ISCSI_X86_MODULES:
-                    self.logger.debug("Optional module %s could not be loaded: %s", module_name, result.stderr)
+                if (
+                    module_name in SCSTConstants.ISCSI_OPT_MODULES
+                    or module_name in SCSTConstants.ISCSI_X86_MODULES
+                ):
+                    self.logger.debug(
+                        "Optional module %s could not be loaded: %s",
+                        module_name,
+                        result.stderr,
+                    )
                     return True  # Continue without optional modules
                 else:
-                    self.logger.error("Failed to load required module %s: %s", module_name, result.stderr)
+                    self.logger.error(
+                        "Failed to load required module %s: %s",
+                        module_name,
+                        result.stderr,
+                    )
                     return False
         except subprocess.TimeoutExpired:
             self.logger.error("Timeout loading module: %s", module_name)
@@ -134,16 +146,23 @@ class SCSTModuleManager:
         required_modules = self.determine_required_modules(config)
         failed_modules = []
 
-        self.logger.info("Required modules for configuration: %s", sorted(required_modules))
+        self.logger.info(
+            "Required modules for configuration: %s", sorted(required_modules)
+        )
 
         for module in required_modules:
             if not self.is_module_loaded(module):
                 if not self.load_module(module):
                     # Only fail for non-optional modules
-                    if module not in SCSTConstants.ISCSI_OPT_MODULES and module not in SCSTConstants.ISCSI_X86_MODULES:
+                    if (
+                        module not in SCSTConstants.ISCSI_OPT_MODULES
+                        and module not in SCSTConstants.ISCSI_X86_MODULES
+                    ):
                         failed_modules.append(module)
             else:
                 self.logger.debug("Module already loaded: %s", module)
 
         if failed_modules:
-            raise SCSTError(f"Failed to load required modules: {', '.join(failed_modules)}")
+            raise SCSTError(
+                f"Failed to load required modules: {', '.join(failed_modules)}"
+            )

@@ -53,9 +53,9 @@ class SCSTSysfs:
     SCST_QUEUE_RES = f"{SCST_ROOT}/last_sysfs_mgmt_res"
 
     # SCST interface constants
-    MGMT_INTERFACE = 'mgmt'
-    ENABLED_ATTR = 'enabled'
-    HANDLER_SYSTEM_ATTRS = {'mgmt', 'type', 'trace_level'}
+    MGMT_INTERFACE = "mgmt"
+    ENABLED_ATTR = "enabled"
+    HANDLER_SYSTEM_ATTRS = {"mgmt", "type", "trace_level"}
 
     def __init__(self, timeout: int = SCSTConstants.DEFAULT_TIMEOUT):
         self.timeout = timeout
@@ -66,11 +66,8 @@ class SCSTSysfs:
         return os.path.exists(path) and os.access(path, os.R_OK)
 
     def write_sysfs(
-            self,
-            path: str,
-            data: str,
-            check_result: bool = True,
-            force_flush: bool = False) -> bool:
+        self, path: str, data: str, check_result: bool = True, force_flush: bool = False
+    ) -> bool:
         """Write data to a sysfs file with comprehensive error handling.
 
         This is the core method for all SCST sysfs operations. It validates
@@ -97,10 +94,10 @@ class SCSTSysfs:
                 raise SCSTError(f"No write permission for: {path}")
 
             # Clean up data representation for logging
-            data_repr = repr(data) if '\n' in data or not data.strip() else data
+            data_repr = repr(data) if "\n" in data or not data.strip() else data
             self.logger.debug("Writing %s to %s", data_repr, path)
 
-            with open(path, 'w') as f:
+            with open(path, "w") as f:
                 f.write(data)
                 if force_flush:
                     f.flush()
@@ -113,7 +110,9 @@ class SCSTSysfs:
         except PermissionError:
             raise SCSTError(f"Permission denied writing to {path}")
         except OSError as e:
-            if e.errno == SCSTConstants.EAGAIN_ERRNO:  # Resource temporarily unavailable
+            if (
+                e.errno == SCSTConstants.EAGAIN_ERRNO
+            ):  # Resource temporarily unavailable
                 if check_result:
                     return self._wait_for_completion()
                 return True
@@ -135,7 +134,7 @@ class SCSTSysfs:
             if not self.valid_path(path):
                 raise SCSTError(f"Cannot read from {path}")
 
-            with open(path, 'r') as f:
+            with open(path, "r") as f:
                 return f.read().strip()
 
         except OSError as e:
@@ -160,10 +159,10 @@ class SCSTSysfs:
             if not self.valid_path(path):
                 raise SCSTError(f"Cannot read from {path}")
 
-            with open(path, 'r') as f:
+            with open(path, "r") as f:
                 # Read only the first line and strip trailing newline
                 # This handles SCST's pattern where non-default values have '\n[key]' appended
-                return f.readline().rstrip('\n')
+                return f.readline().rstrip("\n")
 
         except OSError as e:
             raise SCSTError(f"Error reading from {path}: {e}")
@@ -197,12 +196,13 @@ class SCSTSysfs:
         try:
             if not self.valid_path(path):
                 return []
-            return [f for f in os.listdir(path) if not f.startswith('.')]
+            return [f for f in os.listdir(path) if not f.startswith(".")]
         except OSError:
             return []
 
-    def is_valid_sysfs_directory(self, base_path: str, item_name: str,
-                                 exclude_mgmt: bool = True) -> bool:
+    def is_valid_sysfs_directory(
+        self, base_path: str, item_name: str, exclude_mgmt: bool = True
+    ) -> bool:
         """Check if an item represents a valid SCST sysfs directory.
         This method validates that an item within a sysfs directory is:
         1. Actually a directory (not a file/attribute)
@@ -228,8 +228,9 @@ class SCSTSysfs:
         item_path = os.path.join(base_path, item_name)
         return os.path.isdir(item_path)
 
-    def mgmt_operation(self, mgmt_path: str, command: str, item: str,
-                       success_msg: str, error_msg: str) -> bool:
+    def mgmt_operation(
+        self, mgmt_path: str, command: str, item: str, success_msg: str, error_msg: str
+    ) -> bool:
         """Generic method for mgmt interface operations (add/del/create)
         Args:
             mgmt_path: Path to the mgmt interface file

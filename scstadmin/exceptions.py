@@ -18,4 +18,5 @@ class SCSTError(Exception):
     All SCST Python configurator operations should catch and handle SCSTError
     rather than generic exceptions for proper error handling.
     """
+
     pass

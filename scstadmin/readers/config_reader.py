@@ -94,7 +94,7 @@ class SCSTConfigurationReader:
             raw_stripped = raw_value.strip()
 
             # Check if it has the [key] suffix indicating non-default value
-            if raw_stripped.endswith('[key]'):
+            if raw_stripped.endswith("[key]"):
                 # Strip off the [key] suffix to get clean value
                 clean_value = raw_stripped[:-5].strip()
                 return clean_value
@@ -109,21 +109,31 @@ class SCSTConfigurationReader:
         return self.sysfs.valid_path(self.sysfs.SCST_ROOT)
 
     # Delegate methods to specialized readers for backward compatibility
-    def _get_current_device_attrs(self, handler: str, device_name: str,
-                                  filter_attrs: Optional[Set[str]] = None) -> Dict[str, str]:
+    def _get_current_device_attrs(
+        self, handler: str, device_name: str, filter_attrs: Optional[Set[str]] = None
+    ) -> Dict[str, str]:
         """Delegate to DeviceReader for backward compatibility"""
-        return self.device_reader._get_current_device_attrs(handler, device_name, filter_attrs)
+        return self.device_reader._get_current_device_attrs(
+            handler, device_name, filter_attrs
+        )
 
-    def _get_current_target_attrs(self, driver: str, target_name: str,
-                                  filter_attrs: Optional[Set[str]] = None) -> Dict[str, str]:
+    def _get_current_target_attrs(
+        self, driver: str, target_name: str, filter_attrs: Optional[Set[str]] = None
+    ) -> Dict[str, str]:
         """Delegate to TargetReader for backward compatibility"""
-        return self.target_reader._get_current_target_attrs(driver, target_name, filter_attrs)
+        return self.target_reader._get_current_target_attrs(
+            driver, target_name, filter_attrs
+        )
 
-    def _get_target_create_params(self, driver_name: str, target_attrs: Dict[str, str]) -> Dict[str, str]:
+    def _get_target_create_params(
+        self, driver_name: str, target_attrs: Dict[str, str]
+    ) -> Dict[str, str]:
         """Delegate to TargetReader for backward compatibility"""
         return self.target_reader._get_target_create_params(driver_name, target_attrs)
 
-    def _get_lun_create_params(self, driver: str, target: str, lun_attrs: Dict[str, str]) -> Dict[str, str]:
+    def _get_lun_create_params(
+        self, driver: str, target: str, lun_attrs: Dict[str, str]
+    ) -> Dict[str, str]:
         """Delegate to TargetReader for backward compatibility"""
         return self.target_reader._get_lun_create_params(driver, target, lun_attrs)
 
@@ -131,11 +141,17 @@ class SCSTConfigurationReader:
         """Delegate to TargetReader for backward compatibility"""
         return self.target_reader._get_current_lun_device(driver, target, lun_number)
 
-    def _get_current_group_lun_device(self, driver: str, target: str, group_name: str, lun_number: str) -> str:
+    def _get_current_group_lun_device(
+        self, driver: str, target: str, group_name: str, lun_number: str
+    ) -> str:
         """Delegate to TargetReader for backward compatibility"""
-        return self.target_reader._get_current_group_lun_device(driver, target, group_name, lun_number)
+        return self.target_reader._get_current_group_lun_device(
+            driver, target, group_name, lun_number
+        )
 
-    def _get_driver_attribute_default(self, driver_name: str, attr_name: str) -> Optional[str]:
+    def _get_driver_attribute_default(
+        self, driver_name: str, attr_name: str
+    ) -> Optional[str]:
         """Delegate to TargetReader for backward compatibility"""
         return self.target_reader._get_driver_attribute_default(driver_name, attr_name)
 

@@ -3,6 +3,7 @@ Group Writer for SCST Administration
 
 This module handles device group and target group write operations for SCST configuration.
 """
+
 import os
 import logging
 from typing import Dict, Any, TYPE_CHECKING
@@ -22,14 +23,16 @@ class GroupWriter:
     def __init__(self, sysfs: SCSTSysfs, config_reader=None, logger=None):
         self.sysfs = sysfs
         self.config_reader = config_reader
-        self.logger = logger or logging.getLogger('scstadmin.writers.group')
+        self.logger = logger or logging.getLogger("scstadmin.writers.group")
 
     def _device_group_exists(self, group_name: str) -> bool:
         """Check if a device group already exists"""
         group_path = f"{self.sysfs.SCST_DEV_GROUPS}/{group_name}"
         return entity_exists(group_path)
 
-    def _device_group_config_matches(self, group_name: str, group_config: DeviceGroupConfig) -> bool:
+    def _device_group_config_matches(
+        self, group_name: str, group_config: DeviceGroupConfig
+    ) -> bool:
         """Check if device group configuration matches current SCST sysfs state.
         SCST device groups provide hierarchical device and target management by
         organizing devices into groups and associating target groups with them.
@@ -79,8 +82,10 @@ class GroupWriter:
             devices_path = f"{self.sysfs.SCST_DEV_GROUPS}/{group_name}/devices"
             if os.path.exists(devices_path):
                 for device_item in os.listdir(devices_path):
-                    is_valid_device_entry = device_item != self.sysfs.MGMT_INTERFACE and os.path.isdir(
-                        os.path.join(devices_path, device_item))
+                    is_valid_device_entry = (
+                        device_item != self.sysfs.MGMT_INTERFACE
+                        and os.path.isdir(os.path.join(devices_path, device_item))
+                    )
                     if is_valid_device_entry:
                         current_devices.add(device_item)
             desired_devices = set(group_config.devices)
@@ -89,11 +94,15 @@ class GroupWriter:
 
             # Check target groups in group
             current_target_groups = set()
-            target_groups_path = f"{self.sysfs.SCST_DEV_GROUPS}/{group_name}/target_groups"
+            target_groups_path = (
+                f"{self.sysfs.SCST_DEV_GROUPS}/{group_name}/target_groups"
+            )
             if os.path.exists(target_groups_path):
                 for tgroup_item in os.listdir(target_groups_path):
-                    is_valid_target_group_entry = tgroup_item != self.sysfs.MGMT_INTERFACE and os.path.isdir(
-                        os.path.join(target_groups_path, tgroup_item))
+                    is_valid_target_group_entry = (
+                        tgroup_item != self.sysfs.MGMT_INTERFACE
+                        and os.path.isdir(os.path.join(target_groups_path, tgroup_item))
+                    )
                     if is_valid_target_group_entry:
                         current_target_groups.add(tgroup_item)
             desired_target_groups = set(group_config.target_groups.keys())
@@ -102,14 +111,17 @@ class GroupWriter:
 
             # Check target group configurations
             for tgroup_name, tgroup_config in group_config.target_groups.items():
-                if not self._target_group_config_matches(group_name, tgroup_name, tgroup_config):
+                if not self._target_group_config_matches(
+                    group_name, tgroup_name, tgroup_config
+                ):
                     return False
             return True
         except (OSError, IOError):
             return False
 
-    def _target_group_config_matches(self, device_group: str, target_group: str,
-                                     tgroup_config: TargetGroupConfig) -> bool:
+    def _target_group_config_matches(
+        self, device_group: str, target_group: str, tgroup_config: TargetGroupConfig
+    ) -> bool:
         """Check if ALUA target group configuration matches current sysfs state.
         Compares target membership, target attributes (rel_tgt_id), and group attributes
         (state, group_id) for multipath storage access control.
@@ -128,8 +140,10 @@ class GroupWriter:
             if os.path.exists(targets_path):
                 for target_item in os.listdir(targets_path):
                     # Skip 'mgmt' interface, only count actual targets (directories)
-                    is_valid_target_entry = target_item != self.sysfs.MGMT_INTERFACE and os.path.isdir(
-                        os.path.join(targets_path, target_item))
+                    is_valid_target_entry = (
+                        target_item != self.sysfs.MGMT_INTERFACE
+                        and os.path.isdir(os.path.join(targets_path, target_item))
+                    )
                     if is_valid_target_entry:
                         current_targets.add(target_item)
             desired_targets = set(tgroup_config.targets)
@@ -154,14 +168,20 @@ class GroupWriter:
             # Targets WITHOUT attributes become symlinks:
             #   .../target_groups/controller_B/iqn.example:test1 -> ../../../../targets/...
             for target_name in tgroup_config.targets:
-                if target_name in tgroup_config.target_attributes:  # Target has attributes that need checking
+                if (
+                    target_name in tgroup_config.target_attributes
+                ):  # Target has attributes that need checking
                     target_config = tgroup_config.target_attributes[target_name]
                     target_path = f"{targets_path}/{target_name}"
-                    if os.path.isdir(target_path):  # Directory targets can have individual attributes
+                    if os.path.isdir(
+                        target_path
+                    ):  # Directory targets can have individual attributes
                         for attr_name, desired_value in target_config.items():
                             attr_path = f"{target_path}/{attr_name}"
                             if os.path.exists(attr_path):
-                                current_value = self.sysfs.read_sysfs_attribute(attr_path)
+                                current_value = self.sysfs.read_sysfs_attribute(
+                                    attr_path
+                                )
                                 if current_value != desired_value:
                                     return False  # Target attribute value differs
                             else:
@@ -171,7 +191,9 @@ class GroupWriter:
         except (OSError, IOError):
             return False
 
-    def _update_device_group(self, group_name: str, group_config: DeviceGroupConfig) -> None:
+    def _update_device_group(
+        self, group_name: str, group_config: DeviceGroupConfig
+    ) -> None:
         """Update an existing device group with new configuration using incremental changes.
 
         This method provides efficient device group updates by only modifying the specific
@@ -221,7 +243,9 @@ class GroupWriter:
             This method is called after group_writer._device_group_config_matches() determines
             that updates are needed, ensuring work is only done when necessary.
         """
-        self.logger.debug("Updating device group %s configuration incrementally", group_name)
+        self.logger.debug(
+            "Updating device group %s configuration incrementally", group_name
+        )
 
         # For now, implement basic updates - could be enhanced for fine-grained control
         # Update devices
@@ -236,11 +260,23 @@ class GroupWriter:
                 try:
                     attr_path = f"{self.sysfs.SCST_DEV_GROUPS}/{group_name}/{attr_name}"
                     self.sysfs.write_sysfs(attr_path, attr_value, check_result=False)
-                    self.logger.debug("Updated device group attribute %s.%s = %s", group_name, attr_name, attr_value)
+                    self.logger.debug(
+                        "Updated device group attribute %s.%s = %s",
+                        group_name,
+                        attr_name,
+                        attr_value,
+                    )
                 except SCSTError as e:
-                    self.logger.warning("Failed to update device group attribute %s.%s: %s", group_name, attr_name, e)
+                    self.logger.warning(
+                        "Failed to update device group attribute %s.%s: %s",
+                        group_name,
+                        attr_name,
+                        e,
+                    )
 
-    def _update_device_group_devices(self, group_name: str, group_config: DeviceGroupConfig) -> None:
+    def _update_device_group_devices(
+        self, group_name: str, group_config: DeviceGroupConfig
+    ) -> None:
         """Update devices in a device group incrementally.
         Synchronizes device group membership by adding missing devices and removing
         extra devices. Device groups manage membership through symbolic links in
@@ -254,7 +290,9 @@ class GroupWriter:
         devices_path = f"{self.sysfs.SCST_DEV_GROUPS}/{group_name}/devices"
         if os.path.exists(devices_path):
             for item in os.listdir(devices_path):
-                if item != self.sysfs.MGMT_INTERFACE and os.path.islink(os.path.join(devices_path, item)):
+                if item != self.sysfs.MGMT_INTERFACE and os.path.islink(
+                    os.path.join(devices_path, item)
+                ):
                     current_devices.add(item)
 
         # Get desired device membership
@@ -272,21 +310,41 @@ class GroupWriter:
         for device_name in devices_to_remove:
             try:
                 self.sysfs.write_sysfs(mgmt_path, f"del {device_name}")
-                self.logger.debug("Removed device %s from group %s", device_name, group_name)
+                self.logger.debug(
+                    "Removed device %s from group %s", device_name, group_name
+                )
             except SCSTError as e:
-                self.logger.warning("Failed to remove device %s from group %s: %s", device_name, group_name, e)
+                self.logger.warning(
+                    "Failed to remove device %s from group %s: %s",
+                    device_name,
+                    group_name,
+                    e,
+                )
 
         # Add missing devices
         for device_name in devices_to_add:
             try:
                 self.sysfs.write_sysfs(mgmt_path, f"add {device_name}")
-                self.logger.debug("Added device %s to group %s", device_name, group_name)
+                self.logger.debug(
+                    "Added device %s to group %s", device_name, group_name
+                )
             except SCSTError as e:
-                self.logger.warning("Failed to add device %s to group %s: %s", device_name, group_name, e)
-        self.logger.debug("Updated device group %s: added %s, removed %s",
-                          group_name, len(devices_to_add), len(devices_to_remove))
+                self.logger.warning(
+                    "Failed to add device %s to group %s: %s",
+                    device_name,
+                    group_name,
+                    e,
+                )
+        self.logger.debug(
+            "Updated device group %s: added %s, removed %s",
+            group_name,
+            len(devices_to_add),
+            len(devices_to_remove),
+        )
 
-    def _update_device_group_target_groups(self, group_name: str, group_config: DeviceGroupConfig) -> None:
+    def _update_device_group_target_groups(
+        self, group_name: str, group_config: DeviceGroupConfig
+    ) -> None:
         """Update target groups in a device group with proper synchronization.
         Synchronizes device group target groups by adding missing target groups,
         updating existing ones, and removing obsolete target groups that are no
@@ -302,7 +360,9 @@ class GroupWriter:
         target_groups_path = f"{self.sysfs.SCST_DEV_GROUPS}/{group_name}/target_groups"
         if os.path.exists(target_groups_path):
             for item in os.listdir(target_groups_path):
-                if item != self.sysfs.MGMT_INTERFACE and os.path.isdir(os.path.join(target_groups_path, item)):
+                if item != self.sysfs.MGMT_INTERFACE and os.path.isdir(
+                    os.path.join(target_groups_path, item)
+                ):
                     current_target_groups.add(item)
 
         # Get desired target groups from config
@@ -318,31 +378,50 @@ class GroupWriter:
         for tgroup_name in tgroups_to_remove:
             try:
                 self.sysfs.write_sysfs(mgmt_path, f"del {tgroup_name}")
-                self.logger.debug("Removed target group %s from device group %s", tgroup_name, group_name)
+                self.logger.debug(
+                    "Removed target group %s from device group %s",
+                    tgroup_name,
+                    group_name,
+                )
             except SCSTError as e:
-                self.logger.warning("Failed to remove target group %s from device group %s: %s",
-                                    tgroup_name, group_name, e)
+                self.logger.warning(
+                    "Failed to remove target group %s from device group %s: %s",
+                    tgroup_name,
+                    group_name,
+                    e,
+                )
 
         # Create new target groups
         for tgroup_name in tgroups_to_add:
             tgroup_config = group_config.target_groups[tgroup_name]
-            self.logger.debug("Creating target group %s in device group %s", tgroup_name, group_name)
+            self.logger.debug(
+                "Creating target group %s in device group %s", tgroup_name, group_name
+            )
             self._create_target_group(group_name, tgroup_name, tgroup_config)
 
         # Update existing target groups
         for tgroup_name in tgroups_to_update:
             tgroup_config = group_config.target_groups[tgroup_name]
-            self.logger.debug("Updating target group %s in device group %s", tgroup_name, group_name)
+            self.logger.debug(
+                "Updating target group %s in device group %s", tgroup_name, group_name
+            )
             self._update_target_group_attributes(group_name, tgroup_name, tgroup_config)
         if tgroups_to_add or tgroups_to_remove or tgroups_to_update:
-            self.logger.debug("Updated target groups in %s: added %s, removed %s, updated %s",
-                              group_name, len(tgroups_to_add), len(tgroups_to_remove),
-                              len(tgroups_to_update))
+            self.logger.debug(
+                "Updated target groups in %s: added %s, removed %s, updated %s",
+                group_name,
+                len(tgroups_to_add),
+                len(tgroups_to_remove),
+                len(tgroups_to_update),
+            )
         else:
-            self.logger.debug("Target groups in device group %s already correct", group_name)
+            self.logger.debug(
+                "Target groups in device group %s already correct", group_name
+            )
 
-    def _update_target_group_attributes(self, device_group: str, tgroup_name: str,
-                                        tgroup_config: Dict[str, Any]) -> None:
+    def _update_target_group_attributes(
+        self, device_group: str, tgroup_name: str, tgroup_config: Dict[str, Any]
+    ) -> None:
         """Update target membership and attributes of an existing target group.
         This method handles the configuration of an existing target group within
         a device group, updating both which targets are assigned to the group
@@ -390,27 +469,47 @@ class GroupWriter:
                     current_value = self.sysfs.read_sysfs_attribute(attr_path)
                     if current_value != desired_value:
                         # Update the attribute
-                        self.sysfs.write_sysfs(attr_path, desired_value, check_result=False)
+                        self.sysfs.write_sysfs(
+                            attr_path, desired_value, check_result=False
+                        )
                         self.logger.debug(
                             "Updated target group attribute %s.%s.%s: %s -> %s",
-                            device_group, tgroup_name, attr_name, current_value, desired_value)
+                            device_group,
+                            tgroup_name,
+                            attr_name,
+                            current_value,
+                            desired_value,
+                        )
                     else:
                         self.logger.debug(
                             "Target group attribute %s.%s.%s already has correct value: %s",
-                            device_group, tgroup_name, attr_name, current_value)
+                            device_group,
+                            tgroup_name,
+                            attr_name,
+                            current_value,
+                        )
                 else:
                     # Attribute file doesn't exist, try to set it anyway
                     self.sysfs.write_sysfs(attr_path, desired_value, check_result=False)
                     self.logger.debug(
                         "Set target group attribute %s.%s.%s = %s",
-                        device_group, tgroup_name, attr_name, desired_value)
+                        device_group,
+                        tgroup_name,
+                        attr_name,
+                        desired_value,
+                    )
             except (SCSTError, OSError, IOError) as e:
                 self.logger.warning(
                     "Failed to update target group attribute %s.%s.%s: %s",
-                    device_group, tgroup_name, attr_name, e)
+                    device_group,
+                    tgroup_name,
+                    attr_name,
+                    e,
+                )
 
-    def _update_target_group_targets(self, device_group: str, tgroup_name: str,
-                                     tgroup_config: TargetGroupConfig) -> None:
+    def _update_target_group_targets(
+        self, device_group: str, tgroup_name: str, tgroup_config: TargetGroupConfig
+    ) -> None:
         """Update target membership in a target group with proper synchronization.
         This method manages which targets are assigned to a target group within
         a device group, providing the access control mechanism that determines
@@ -447,7 +546,9 @@ class GroupWriter:
         """
         # Get current targets
         current_targets = set()
-        tgroup_path = f"{self.sysfs.SCST_DEV_GROUPS}/{device_group}/target_groups/{tgroup_name}"
+        tgroup_path = (
+            f"{self.sysfs.SCST_DEV_GROUPS}/{device_group}/target_groups/{tgroup_name}"
+        )
         if os.path.exists(tgroup_path):
             try:
                 for target_item in os.listdir(tgroup_path):
@@ -462,9 +563,11 @@ class GroupWriter:
         for target in missing_targets:
             target_mgmt = f"{tgroup_path}/mgmt"
             self.sysfs.mgmt_operation(
-                target_mgmt, "add", target,
+                target_mgmt,
+                "add",
+                target,
                 f"Added target {target} to target group {device_group}/{tgroup_name}",
-                f"Failed to add target {target} to target group {tgroup_name}"
+                f"Failed to add target {target} to target group {tgroup_name}",
             )
 
         # Remove extra targets
@@ -472,19 +575,30 @@ class GroupWriter:
         for target in extra_targets:
             target_mgmt = f"{tgroup_path}/mgmt"
             self.sysfs.mgmt_operation(
-                target_mgmt, "del", target,
+                target_mgmt,
+                "del",
+                target,
                 f"Removed target {target} from target group {device_group}/{tgroup_name}",
-                f"Failed to remove target {target} from target group {tgroup_name}"
+                f"Failed to remove target {target} from target group {tgroup_name}",
             )
 
         # Set target attributes for all targets (both new and existing)
         for target_name in tgroup_config.targets:
-            if target_name in tgroup_config.target_attributes:  # Target has attributes to set
+            if (
+                target_name in tgroup_config.target_attributes
+            ):  # Target has attributes to set
                 target_config = tgroup_config.target_attributes[target_name]
-                self._set_target_group_target_attributes(device_group, tgroup_name, target_name, target_config)
+                self._set_target_group_target_attributes(
+                    device_group, tgroup_name, target_name, target_config
+                )
 
-    def _set_target_group_target_attributes(self, device_group: str, tgroup_name: str, target_name: str,
-                                            target_config: Dict[str, str]) -> None:
+    def _set_target_group_target_attributes(
+        self,
+        device_group: str,
+        tgroup_name: str,
+        target_name: str,
+        target_config: Dict[str, str],
+    ) -> None:
         """Set attributes for a target within a target group.
         Sets target-level attributes like rel_tgt_id within a target group by writing
         directly to the target's attribute files in the sysfs directory structure.
@@ -501,8 +615,11 @@ class GroupWriter:
 
         # Only directories can have attributes set
         if not os.path.isdir(target_path):
-            self.logger.debug("Target %s is symlink, cannot set attributes - "
-                              "SCST will handle this automatically", target_name)
+            self.logger.debug(
+                "Target %s is symlink, cannot set attributes - "
+                "SCST will handle this automatically",
+                target_name,
+            )
             return
         for attr_name, attr_value in target_config.items():
             attr_path = f"{target_path}/{attr_name}"
@@ -511,20 +628,38 @@ class GroupWriter:
                 if os.path.exists(attr_path):
                     current_value = self.sysfs.read_sysfs_attribute(attr_path)
                     if current_value == attr_value:
-                        self.logger.debug("Target group target attribute "
-                                          "%s/%s/%s.%s already has correct value: %s",
-                                          device_group, tgroup_name, target_name, attr_name, attr_value)
+                        self.logger.debug(
+                            "Target group target attribute "
+                            "%s/%s/%s.%s already has correct value: %s",
+                            device_group,
+                            tgroup_name,
+                            target_name,
+                            attr_name,
+                            attr_value,
+                        )
                         continue
                 self.sysfs.write_sysfs(attr_path, attr_value, check_result=False)
-                self.logger.debug("Set target group target attribute "
-                                  "%s/%s/%s.%s = %s",
-                                  device_group, tgroup_name, target_name, attr_name, attr_value)
+                self.logger.debug(
+                    "Set target group target attribute %s/%s/%s.%s = %s",
+                    device_group,
+                    tgroup_name,
+                    target_name,
+                    attr_name,
+                    attr_value,
+                )
             except SCSTError as e:
-                self.logger.warning("Failed to set target group target attribute "
-                                    "%s/%s/%s.%s: %s",
-                                    device_group, tgroup_name, target_name, attr_name, e)
+                self.logger.warning(
+                    "Failed to set target group target attribute %s/%s/%s.%s: %s",
+                    device_group,
+                    tgroup_name,
+                    target_name,
+                    attr_name,
+                    e,
+                )
 
-    def _create_target_group(self, device_group: str, tgroup_name: str, tgroup_config: TargetGroupConfig) -> None:
+    def _create_target_group(
+        self, device_group: str, tgroup_name: str, tgroup_config: TargetGroupConfig
+    ) -> None:
         """Create a new target group within a device group with full configuration.
         Creates a target group and configures all its components including target
         membership and target-level attributes. Target groups enable ALUA (Asymmetric
@@ -557,23 +692,33 @@ class GroupWriter:
         tgroup_mgmt = f"{self.sysfs.SCST_DEV_GROUPS}/{device_group}/target_groups/mgmt"
         try:
             self.sysfs.write_sysfs(tgroup_mgmt, f"add {tgroup_name}")
-            self.logger.debug("Created target group %s in device group %s", tgroup_name, device_group)
+            self.logger.debug(
+                "Created target group %s in device group %s", tgroup_name, device_group
+            )
             # Add targets to target group and set their attributes
             for target_name in tgroup_config.targets:
                 target_mgmt = f"{self.sysfs.SCST_DEV_GROUPS}/{device_group}/target_groups/{tgroup_name}/mgmt"
                 self.sysfs.write_sysfs(target_mgmt, f"add {target_name}")
-                self.logger.debug("Added target %s to target group %s", target_name, tgroup_name)
+                self.logger.debug(
+                    "Added target %s to target group %s", target_name, tgroup_name
+                )
                 # Set target attributes if any
                 if target_name in tgroup_config.target_attributes:
                     target_config = tgroup_config.target_attributes[target_name]
                     if target_config:
-                        self._set_target_group_target_attributes(device_group, tgroup_name, target_name, target_config)
+                        self._set_target_group_target_attributes(
+                            device_group, tgroup_name, target_name, target_config
+                        )
             # Set target group attributes
-            self._update_target_group_attributes(device_group, tgroup_name, tgroup_config)
+            self._update_target_group_attributes(
+                device_group, tgroup_name, tgroup_config
+            )
         except SCSTError as e:
             self.logger.warning("Failed to create target group %s: %s", tgroup_name, e)
 
-    def _apply_target_groups(self, device_group: str, target_groups: Dict[str, Any]) -> None:
+    def _apply_target_groups(
+        self, device_group: str, target_groups: Dict[str, Any]
+    ) -> None:
         """Apply target group configurations within a device group with full ALUA support.
         Creates and configures target groups for SCST ALUA (Asymmetric Logical Unit Access)
         multipath storage configurations. Each target group represents a different access
@@ -615,20 +760,32 @@ class GroupWriter:
             }
         """
         for tgroup_name, tgroup_config in target_groups.items():
-            self.logger.debug("Processing target group '%s' in device group '%s'", tgroup_name, device_group)
+            self.logger.debug(
+                "Processing target group '%s' in device group '%s'",
+                tgroup_name,
+                device_group,
+            )
             # Check if target group already exists
             tgroup_path = f"{self.sysfs.SCST_DEV_GROUPS}/{device_group}/target_groups/{tgroup_name}"
             if os.path.exists(tgroup_path):
                 # Target group exists, update it
-                self.logger.debug("Target group %s exists, updating configuration", tgroup_name)
-                self._update_target_group_targets(device_group, tgroup_name, tgroup_config)
-                self._update_target_group_attributes(device_group, tgroup_name, tgroup_config)
+                self.logger.debug(
+                    "Target group %s exists, updating configuration", tgroup_name
+                )
+                self._update_target_group_targets(
+                    device_group, tgroup_name, tgroup_config
+                )
+                self._update_target_group_attributes(
+                    device_group, tgroup_name, tgroup_config
+                )
             else:
                 # Target group doesn't exist, create it
-                self.logger.debug("Target group %s doesn't exist, creating", tgroup_name)
+                self.logger.debug(
+                    "Target group %s doesn't exist, creating", tgroup_name
+                )
                 self._create_target_group(device_group, tgroup_name, tgroup_config)
 
-    def apply_config_device_groups(self, config: 'SCSTConfig') -> None:
+    def apply_config_device_groups(self, config: "SCSTConfig") -> None:
         """Apply device groups and ALUA target group configurations.
 
         Creates device groups with device membership and target group access control.
@@ -638,11 +795,17 @@ class GroupWriter:
             # Check if device group already exists - optimize for common case of no changes
             if self._device_group_exists(group_name):
                 if self._device_group_config_matches(group_name, group_config):
-                    self.logger.debug("Device group %s already exists with matching config, skipping", group_name)
+                    self.logger.debug(
+                        "Device group %s already exists with matching config, skipping",
+                        group_name,
+                    )
                     continue
                 else:
                     # Use incremental updates to avoid disrupting existing sessions
-                    self.logger.debug("Device group %s config differs, updating incrementally", group_name)
+                    self.logger.debug(
+                        "Device group %s config differs, updating incrementally",
+                        group_name,
+                    )
                     self._update_device_group(group_name, group_config)
                     continue
 
@@ -652,27 +815,50 @@ class GroupWriter:
                 self.sysfs.write_sysfs(group_mgmt, f"create {group_name}")
                 self.logger.debug("Created device group %s", group_name)
             except SCSTError as e:
-                self.logger.warning("Failed to create device group %s: %s", group_name, e)
+                self.logger.warning(
+                    "Failed to create device group %s: %s", group_name, e
+                )
                 continue
 
             # Apply device group-level attributes (rare but possible)
             if group_config.attributes:
                 for attr_name, attr_value in group_config.attributes.items():
                     try:
-                        attr_path = f"{self.sysfs.SCST_DEV_GROUPS}/{group_name}/{attr_name}"
-                        self.sysfs.write_sysfs(attr_path, attr_value, check_result=False)
-                        self.logger.debug("Set device group attribute %s.%s = %s", group_name, attr_name, attr_value)
+                        attr_path = (
+                            f"{self.sysfs.SCST_DEV_GROUPS}/{group_name}/{attr_name}"
+                        )
+                        self.sysfs.write_sysfs(
+                            attr_path, attr_value, check_result=False
+                        )
+                        self.logger.debug(
+                            "Set device group attribute %s.%s = %s",
+                            group_name,
+                            attr_name,
+                            attr_value,
+                        )
                     except SCSTError as e:
-                        self.logger.warning("Failed to set device group attribute %s.%s: %s", group_name, attr_name, e)
+                        self.logger.warning(
+                            "Failed to set device group attribute %s.%s: %s",
+                            group_name,
+                            attr_name,
+                            e,
+                        )
 
             # Add devices to group - establishes which devices can be accessed by this group
             device_mgmt = f"{self.sysfs.SCST_DEV_GROUPS}/{group_name}/devices/mgmt"
             for device in group_config.devices:
                 try:
                     self.sysfs.write_sysfs(device_mgmt, f"add {device}")
-                    self.logger.debug("Added device %s to device group %s", device, group_name)
+                    self.logger.debug(
+                        "Added device %s to device group %s", device, group_name
+                    )
                 except SCSTError as e:
-                    self.logger.warning("Failed to add device %s to device group %s: %s", device, group_name, e)
+                    self.logger.warning(
+                        "Failed to add device %s to device group %s: %s",
+                        device,
+                        group_name,
+                        e,
+                    )
 
             # Create and configure target groups - this is where ALUA magic happens
             self._apply_target_groups(group_name, group_config.target_groups)
@@ -688,8 +874,7 @@ class GroupWriter:
                 for tgt_group in self.sysfs.list_directory(tgt_groups_path):
                     if tgt_group != self.sysfs.MGMT_INTERFACE:
                         tgt_group_mgmt = f"{tgt_groups_path}/mgmt"
-                        self.sysfs.write_sysfs(
-                            tgt_group_mgmt, f"del {tgt_group}")
+                        self.sysfs.write_sysfs(tgt_group_mgmt, f"del {tgt_group}")
 
             # Remove all devices from the device group
             devices_path = f"{group_path}/devices"
@@ -704,5 +889,4 @@ class GroupWriter:
             self.sysfs.write_sysfs(dg_mgmt, f"del {group_name}")
 
         except SCSTError as e:
-            self.logger.warning(
-                "Failed to remove device group %s: %s", group_name, e)
+            self.logger.warning("Failed to remove device group %s: %s", group_name, e)

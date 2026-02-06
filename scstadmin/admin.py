@@ -1,4 +1,3 @@
-
 """
 High-level SCST administration interface.
 
@@ -45,7 +44,9 @@ class SCSTAdmin:
 
     VERSION = "SCST Python Configurator v1.0.0"
 
-    def __init__(self, timeout: int = SCSTConstants.DEFAULT_TIMEOUT, log_level: str = "WARNING"):
+    def __init__(
+        self, timeout: int = SCSTConstants.DEFAULT_TIMEOUT, log_level: str = "WARNING"
+    ):
         self.sysfs = SCSTSysfs(timeout)
         self.parser = SCSTConfigParser()
         self.module_manager = SCSTModuleManager()
@@ -55,7 +56,7 @@ class SCSTAdmin:
         self._mgmt_cache = {}  # Cache for target management interface info
 
         # Create library-specific logger that doesn't interfere with calling app
-        self.logger = logging.getLogger('scstadmin')
+        self.logger = logging.getLogger("scstadmin")
         self.logger.setLevel(getattr(logging, log_level.upper(), logging.WARNING))
 
         # Only add NullHandler if no handlers exist (prevents duplicate handlers)
@@ -81,7 +82,9 @@ class SCSTAdmin:
         try:
             if self.suspend_count == 0:
                 suspend_path = f"{self.sysfs.SCST_ROOT}/suspend"
-                self.sysfs.write_sysfs(suspend_path, str(suspend_value), check_result=False)
+                self.sysfs.write_sysfs(
+                    suspend_path, str(suspend_value), check_result=False
+                )
                 self.logger.debug("SCST IO suspended with value %s", suspend_value)
             self.suspend_count += 1
         except SCSTError as e:
@@ -182,11 +185,12 @@ class SCSTAdmin:
 
     @classmethod
     def apply_config_file(
-            cls,
-            filename: str,
-            suspend: int = None,
-            timeout: int = SCSTConstants.DEFAULT_TIMEOUT,
-            log_level: str = "WARNING") -> None:
+        cls,
+        filename: str,
+        suspend: int = None,
+        timeout: int = SCSTConstants.DEFAULT_TIMEOUT,
+        log_level: str = "WARNING",
+    ) -> None:
         """Apply SCST configuration from file in a single operation.
 
         This is a convenience class method that combines instance creation,
@@ -219,18 +223,20 @@ class SCSTAdmin:
                 if self.sysfs.valid_path(attr_path):
                     current_value = self.sysfs.read_sysfs_attribute(attr_path)
                     if current_value == attr_value:
-                        self.logger.debug("SCST attribute %s already set to '%s', skipping", attr_name, attr_value)
+                        self.logger.debug(
+                            "SCST attribute %s already set to '%s', skipping",
+                            attr_name,
+                            attr_value,
+                        )
                         continue
 
-                self.sysfs.write_sysfs(
-                    attr_path, attr_value, check_result=False)
+                self.sysfs.write_sysfs(attr_path, attr_value, check_result=False)
             except SCSTError:
                 pass
 
     def _remove_conflicting_config(
-            self,
-            current_config: SCSTConfig,
-            new_config: SCSTConfig) -> None:
+        self, current_config: SCSTConfig, new_config: SCSTConfig
+    ) -> None:
         """Remove configuration elements that conflict with new configuration.
 
         This method performs selective removal of SCST configuration elements
@@ -259,13 +265,17 @@ class SCSTAdmin:
         for driver_name, driver_config in current_config.drivers.items():
             # Skip copy_manager - it's auto-managed by SCST kernel (matches Perl behavior)
             # copy_manager_tgt is a built-in permanent target that auto-populates with devices
-            if driver_name == 'copy_manager':
+            if driver_name == "copy_manager":
                 continue
 
             new_driver_config = new_config.drivers.get(driver_name)
 
             for target_name, target_config in driver_config.targets.items():
-                new_target_config = new_driver_config.targets.get(target_name) if new_driver_config else None
+                new_target_config = (
+                    new_driver_config.targets.get(target_name)
+                    if new_driver_config
+                    else None
+                )
 
                 if new_target_config is None:
                     # Remove entire target
@@ -273,13 +283,17 @@ class SCSTAdmin:
                 else:
                     # Remove LUNs not in new config
                     self.target_writer._remove_obsolete_luns(
-                        driver_name, target_name, target_config, new_target_config)
+                        driver_name, target_name, target_config, new_target_config
+                    )
                     # Remove groups not in new config
                     self.target_writer._remove_obsolete_groups(
-                        driver_name, target_name, target_config, new_target_config)
+                        driver_name, target_name, target_config, new_target_config
+                    )
 
         # Remove obsolete driver attributes
-        self.target_writer._remove_obsolete_driver_attributes(current_config, new_config)
+        self.target_writer._remove_obsolete_driver_attributes(
+            current_config, new_config
+        )
 
         # Remove devices not in new config
         for device_name in current_config.devices:
@@ -324,15 +338,13 @@ class SCSTAdmin:
                 enabled_path = f"{self.sysfs.SCST_TARGETS}/{driver}/enabled"
                 if self.sysfs.valid_path(enabled_path):
                     try:
-                        self.sysfs.write_sysfs(
-                            enabled_path, '0', check_result=False)
+                        self.sysfs.write_sysfs(enabled_path, "0", check_result=False)
                     except SCSTError:
                         pass
 
             # Clear all device groups
             self.logger.info("Removing all device groups")
-            for group_name in self.sysfs.list_directory(
-                    self.sysfs.SCST_DEV_GROUPS):
+            for group_name in self.sysfs.list_directory(self.sysfs.SCST_DEV_GROUPS):
                 if group_name != self.sysfs.MGMT_INTERFACE:
                     self.group_writer.remove_device_group(group_name)
 
@@ -343,12 +355,16 @@ class SCSTAdmin:
 
                 # Get known driver attributes to skip
                 driver_attrs = SCSTConstants.DRIVER_ATTRIBUTES.get(driver, set())
-                driver_attrs.update({self.sysfs.MGMT_INTERFACE, self.sysfs.ENABLED_ATTR})
+                driver_attrs.update(
+                    {self.sysfs.MGMT_INTERFACE, self.sysfs.ENABLED_ATTR}
+                )
 
                 for item in self.sysfs.list_directory(driver_path):
                     # Skip known driver attributes (don't try to reset them)
                     if item in driver_attrs:
-                        self.logger.debug("Skipping driver attribute '%s/%s'", driver, item)
+                        self.logger.debug(
+                            "Skipping driver attribute '%s/%s'", driver, item
+                        )
                         continue
 
                     # Only process directories that are actual targets
@@ -356,7 +372,9 @@ class SCSTAdmin:
                     if os.path.isdir(item_path):
                         # Check if it has target-specific subdirectories (luns, ini_groups, or sessions)
                         has_luns = self.sysfs.valid_path(f"{item_path}/luns")
-                        has_ini_groups = self.sysfs.valid_path(f"{item_path}/ini_groups")
+                        has_ini_groups = self.sysfs.valid_path(
+                            f"{item_path}/ini_groups"
+                        )
                         has_sessions = self.sysfs.valid_path(f"{item_path}/sessions")
 
                         if has_luns or has_ini_groups or has_sessions:
@@ -364,18 +382,24 @@ class SCSTAdmin:
                             self._clear_target_dynamic_attributes(driver, item)
 
                             # copy_manager_tgt is a built-in permanent target - just clear its LUNs
-                            if driver == 'copy_manager' and item == 'copy_manager_tgt':
+                            if driver == "copy_manager" and item == "copy_manager_tgt":
                                 luns_mgmt = f"{item_path}/luns/mgmt"
                                 if self.sysfs.valid_path(luns_mgmt):
                                     try:
                                         self.sysfs.write_sysfs(luns_mgmt, "clear")
                                     except SCSTError as e:
                                         self.logger.warning(
-                                            "Failed to clear copy_manager_tgt LUNs: %s", e)
+                                            "Failed to clear copy_manager_tgt LUNs: %s",
+                                            e,
+                                        )
                             else:
                                 self.target_writer.remove_target(driver, item)
                         else:
-                            self.logger.debug("Skipping '%s/%s' - not a target directory", driver, item)
+                            self.logger.debug(
+                                "Skipping '%s/%s' - not a target directory",
+                                driver,
+                                item,
+                            )
 
                 # Clear driver dynamic attributes after all targets removed
                 self._clear_driver_dynamic_attributes(driver)
@@ -389,8 +413,7 @@ class SCSTAdmin:
                     # Skip handler attributes - only remove actual devices
                     if device not in self.sysfs.HANDLER_SYSTEM_ATTRS:
                         try:
-                            self.sysfs.write_sysfs(
-                                handler_mgmt, f"del_device {device}")
+                            self.sysfs.write_sysfs(handler_mgmt, f"del_device {device}")
                         except SCSTError:
                             pass
 
@@ -435,12 +458,15 @@ class SCSTAdmin:
         try:
             mgmt_info = self.config_reader._get_target_mgmt_info(driver)
             current_attrs = self.config_reader._get_current_target_attrs(
-                driver, target, mgmt_info['target_attributes'])
+                driver, target, mgmt_info["target_attributes"]
+            )
 
-            for attr_name in mgmt_info['target_attributes']:
+            for attr_name in mgmt_info["target_attributes"]:
                 if current_attrs.get(attr_name) is not None:
                     try:
-                        self.target_writer._remove_target_mgmt_attribute(driver, target, attr_name)
+                        self.target_writer._remove_target_mgmt_attribute(
+                            driver, target, attr_name
+                        )
                     except SCSTError:
                         pass
         except (SCSTError, KeyError):
@@ -459,7 +485,7 @@ class SCSTAdmin:
             mgmt_info = self.config_reader._get_target_mgmt_info(driver)
             driver_path = f"{self.sysfs.SCST_TARGETS}/{driver}"
 
-            for attr_name in mgmt_info['driver_attributes']:
+            for attr_name in mgmt_info["driver_attributes"]:
                 attr_path = f"{driver_path}/{attr_name}"
                 if self.sysfs.valid_path(attr_path):
                     try:
@@ -469,8 +495,10 @@ class SCSTAdmin:
                             # Use mgmt interface to remove driver attribute
                             mgmt_path = f"{driver_path}/mgmt"
                             self.sysfs.write_sysfs(
-                                mgmt_path, f"del_attribute {attr_name} {current_value.strip()}",
-                                check_result=False)
+                                mgmt_path,
+                                f"del_attribute {attr_name} {current_value.strip()}",
+                                check_result=False,
+                            )
                     except SCSTError:
                         pass
         except (SCSTError, KeyError):

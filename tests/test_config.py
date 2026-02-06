@@ -11,8 +11,10 @@ import sys
 # Imports handled by conftest.py
 
 from scstadmin.config import (
-    DeviceConfig, VdiskFileioDeviceConfig,
-    VdiskBlockioDeviceConfig, DevDiskDeviceConfig
+    DeviceConfig,
+    VdiskFileioDeviceConfig,
+    VdiskBlockioDeviceConfig,
+    DevDiskDeviceConfig,
 )
 
 
@@ -21,10 +23,7 @@ def test_vdisk_fileio():
     print("Testing VdiskFileioDeviceConfig...")
 
     device = VdiskFileioDeviceConfig(
-        name="disk1",
-        filename="/path/to/disk1.img",
-        blocksize="4096",
-        readonly="0"
+        name="disk1", filename="/path/to/disk1.img", blocksize="4096", readonly="0"
     )
 
     assert device.name == "disk1"
@@ -42,10 +41,7 @@ def test_vdisk_blockio():
     print("Testing VdiskBlockioDeviceConfig...")
 
     device = VdiskBlockioDeviceConfig(
-        name="block_disk",
-        filename="/dev/sdb",
-        nv_cache="1",
-        o_direct="1"
+        name="block_disk", filename="/dev/sdb", nv_cache="1", o_direct="1"
     )
 
     assert device.name == "block_disk"
@@ -61,11 +57,7 @@ def test_dev_disk():
     """Test DevDiskDeviceConfig creation and properties."""
     print("Testing DevDiskDeviceConfig...")
 
-    device = DevDiskDeviceConfig(
-        name="real_disk",
-        filename="/dev/sda",
-        readonly="1"
-    )
+    device = DevDiskDeviceConfig(name="real_disk", filename="/dev/sda", readonly="1")
 
     assert device.name == "real_disk"
     assert device.handler_type == "dev_disk"
@@ -94,7 +86,7 @@ def test_polymorphism():
     devices = [
         VdiskFileioDeviceConfig(name="file_dev", filename="/tmp/file.img"),
         VdiskBlockioDeviceConfig(name="block_dev", filename="/dev/sdb"),
-        DevDiskDeviceConfig(name="real_dev", filename="/dev/sda")
+        DevDiskDeviceConfig(name="real_dev", filename="/dev/sda"),
     ]
 
     for device in devices:
@@ -119,9 +111,10 @@ def main():
     except Exception as e:
         print(f"\n❌ Test failed: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

@@ -17,8 +17,14 @@ def test_parsing_errors():
         ("HANDLER", "Malformed HANDLER"),
         ("TARGET_DRIVER", "Malformed TARGET_DRIVER"),
         ("TARGET_DRIVER iscsi {\n    TARGET\n}", "Malformed TARGET"),
-        ("TARGET_DRIVER iscsi {\n    TARGET test {\n        LUN\n    }\n}", "Malformed LUN"),
-        ("invalid_global = value", "Ignoring unrecognized"),  # This should be logged, not error
+        (
+            "TARGET_DRIVER iscsi {\n    TARGET test {\n        LUN\n    }\n}",
+            "Malformed LUN",
+        ),
+        (
+            "invalid_global = value",
+            "Ignoring unrecognized",
+        ),  # This should be logged, not error
         ("global_attr =", "Configuration parsing error"),  # This should fail
     ]
 
@@ -35,10 +41,12 @@ def test_parsing_errors():
             if expected_error.lower() in error_msg.lower():
                 print(f"✅ Correctly caught error: {error_msg}")
             else:
-                print(f"❌ Wrong error type. Expected '{expected_error}', got: {error_msg}")
+                print(
+                    f"❌ Wrong error type. Expected '{expected_error}', got: {error_msg}"
+                )
         except Exception as e:
             print(f"❌ Unexpected exception type: {type(e).__name__}: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_parsing_errors()

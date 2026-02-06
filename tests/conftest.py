@@ -21,13 +21,13 @@ def project_root():
 @pytest.fixture(scope="session")
 def fixtures_dir():
     """Path to the test fixtures directory."""
-    return Path(__file__).parent / 'fixtures'
+    return Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture
 def sample_basic_config():
     """Return a basic SCST configuration as text."""
-    return '''
+    return """
     HANDLER vdisk_fileio {
         DEVICE test_disk {
             filename /tmp/test.img
@@ -44,13 +44,13 @@ def sample_basic_config():
     }
 
     setup_id 12345
-    '''
+    """
 
 
 @pytest.fixture
 def sample_complex_config():
     """Return a more complex SCST configuration for testing."""
-    return '''
+    return """
     HANDLER vdisk_fileio {
         DEVICE disk1 {
             filename /path/to/disk1.img
@@ -103,4 +103,4 @@ def sample_complex_config():
 
     setup_id 67890
     max_tasklet_cmd 32
-    '''
+    """

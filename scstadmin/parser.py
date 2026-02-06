@@ -18,8 +18,14 @@ import logging
 from typing import List, Tuple, Dict
 
 from .config import (
-    SCSTConfig, create_device_config, LunConfig, InitiatorGroupConfig,
-    TargetConfig, DriverConfig, DeviceGroupConfig, TargetGroupConfig
+    SCSTConfig,
+    create_device_config,
+    LunConfig,
+    InitiatorGroupConfig,
+    TargetConfig,
+    DriverConfig,
+    DeviceGroupConfig,
+    TargetGroupConfig,
 )
 from .exceptions import SCSTError
 
@@ -55,7 +61,9 @@ class SCSTConfigParser:
             return value[1:-1]
         return value
 
-    def _add_target_attribute(self, attributes: Dict[str, str], key: str, value: str) -> None:
+    def _add_target_attribute(
+        self, attributes: Dict[str, str], key: str, value: str
+    ) -> None:
         """Add a target attribute, combining multiple values with semicolon separator"""
         if key in attributes:
             # If attribute already exists, append with semicolon separator
@@ -78,7 +86,7 @@ class SCSTConfigParser:
         """
         self.logger.info("Parsing configuration file: %s", filename)
         try:
-            with open(filename, 'r') as f:
+            with open(filename, "r") as f:
                 content = f.read()
         except OSError as e:
             raise SCSTError(f"Cannot read config file {filename}: {e}")
@@ -110,7 +118,7 @@ class SCSTConfigParser:
             lines = []
             for line in content.splitlines():
                 line = line.strip()
-                if line and not line.startswith('#'):
+                if line and not line.startswith("#"):
                     lines.append(line)
 
             # Parse configuration blocks
@@ -129,23 +137,25 @@ class SCSTConfigParser:
         while i < len(lines):
             try:
                 line = lines[i].strip()
-                if line.startswith('HANDLER '):
+                if line.startswith("HANDLER "):
                     i = self._parse_handler_block(lines, i, config)
-                elif line.startswith('TARGET_DRIVER '):
+                elif line.startswith("TARGET_DRIVER "):
                     i = self._parse_target_driver_block(lines, i, config)
-                elif line.startswith('DEVICE_GROUP '):
+                elif line.startswith("DEVICE_GROUP "):
                     i = self._parse_device_group_block(lines, i, config)
-                elif '=' in line:
+                elif "=" in line:
                     # Global SCST attribute in key=value format
-                    parts = line.split('=', 1)
+                    parts = line.split("=", 1)
                     if len(parts) != 2:
-                        raise SCSTError(f"Malformed global attribute at line {i+1}: '{line}'")
+                        raise SCSTError(
+                            f"Malformed global attribute at line {i + 1}: '{line}'"
+                        )
                     key, value = parts
                     key = key.strip()
                     value = self._strip_quotes(value)
                     config.scst_attributes[key] = value
                     i += 1
-                elif ' ' in line and not line.startswith('#'):
+                elif " " in line and not line.startswith("#"):
                     # Global SCST attribute in key value format
                     parts = line.split(None, 1)  # Split on first whitespace
                     if len(parts) == 2:
@@ -155,18 +165,25 @@ class SCSTConfigParser:
                         config.scst_attributes[key] = value
                         i += 1
                     else:
-                        self.logger.warning("Ignoring unrecognized line %s: '%s'", i+1, line)
+                        self.logger.warning(
+                            "Ignoring unrecognized line %s: '%s'", i + 1, line
+                        )
                         i += 1
                 else:
-                    self.logger.warning("Ignoring unrecognized line %s: '%s'", i+1, line)
+                    self.logger.warning(
+                        "Ignoring unrecognized line %s: '%s'", i + 1, line
+                    )
                     i += 1
             except SCSTError:
                 raise  # Re-raise SCSTError as-is
             except Exception as e:
-                raise SCSTError(f"Parsing error at line {i+1}: '{lines[i] if i < len(lines) else 'EOF'}' - {e}")
+                raise SCSTError(
+                    f"Parsing error at line {i + 1}: '{lines[i] if i < len(lines) else 'EOF'}' - {e}"
+                )
 
-    def _parse_block_generic(self, lines: List[str], start: int, block_type: str,
-                             expected_format: str) -> Tuple[str, int, int]:
+    def _parse_block_generic(
+        self, lines: List[str], start: int, block_type: str, expected_format: str
+    ) -> Tuple[str, int, int]:
         """Parse a generic block structure extracting name and brace positions.
 
         Handles the common pattern of:
@@ -192,17 +209,19 @@ class SCSTConfigParser:
         line = lines[start]
         parts = line.split()
         if len(parts) < 2:
-            raise SCSTError(f"Malformed {block_type} line at {start+1}: '{line}' - {expected_format}")
+            raise SCSTError(
+                f"Malformed {block_type} line at {start + 1}: '{line}' - {expected_format}"
+            )
 
         block_name = parts[1]
 
         # Check if opening brace is on the same line
-        if line.endswith('{'):
+        if line.endswith("{"):
             content_start = start + 1
         else:
             # Opening brace should be on next line
             content_start = start + 1
-            if content_start < len(lines) and lines[content_start].strip() == '{':
+            if content_start < len(lines) and lines[content_start].strip() == "{":
                 content_start += 1
             else:
                 # No opening brace found - treat as empty block
@@ -214,20 +233,27 @@ class SCSTConfigParser:
         while i < len(lines) and brace_count > 0:
             line_content = lines[i].strip()
             # Count opening braces: "BLOCK_NAME {" patterns
-            if line_content.endswith('{'):
+            if line_content.endswith("{"):
                 brace_count += 1
             # Count closing braces: "}" at end of line (handles both standalone and inline)
-            elif line_content.endswith('}'):
+            elif line_content.endswith("}"):
                 brace_count -= 1
             i += 1
 
         if brace_count != 0:
-            raise SCSTError(f"Unmatched braces in {block_type} {block_name} starting at line {start+1}")
+            raise SCSTError(
+                f"Unmatched braces in {block_type} {block_name} starting at line {start + 1}"
+            )
 
-        return block_name, content_start, i - 1  # i-1 because we want index of closing brace
+        return (
+            block_name,
+            content_start,
+            i - 1,
+        )  # i-1 because we want index of closing brace
 
-    def _parse_single_attribute_line(self, line: str, attributes: Dict[str, str],
-                                     attribute_handler: callable = None) -> bool:
+    def _parse_single_attribute_line(
+        self, line: str, attributes: Dict[str, str], attribute_handler: callable = None
+    ) -> bool:
         """Parse a single line for key-value attributes.
 
         Handles both formats:
@@ -246,9 +272,9 @@ class SCSTConfigParser:
         if not line:
             return False
 
-        if '=' in line:
+        if "=" in line:
             # Format: key=value
-            key, value = line.split('=', 1)
+            key, value = line.split("=", 1)
             key = key.strip()
             value = self._strip_quotes(value)
             if attribute_handler:
@@ -256,7 +282,7 @@ class SCSTConfigParser:
             else:
                 attributes[key] = value
             return True
-        elif ' ' in line:
+        elif " " in line:
             # Format: key value
             parts = line.split(None, 1)  # Split on first whitespace
             if len(parts) == 2:
@@ -271,9 +297,14 @@ class SCSTConfigParser:
 
         return False
 
-    def _parse_attributes_in_block(self, lines: List[str], start: int, end: int,
-                                   attributes: Dict[str, str],
-                                   attribute_handler: callable = None) -> None:
+    def _parse_attributes_in_block(
+        self,
+        lines: List[str],
+        start: int,
+        end: int,
+        attributes: Dict[str, str],
+        attribute_handler: callable = None,
+    ) -> None:
         """Parse key-value attributes within a block using single-line parsing.
 
         Args:
@@ -287,10 +318,8 @@ class SCSTConfigParser:
             self._parse_single_attribute_line(lines[i], attributes, attribute_handler)
 
     def _parse_handler_block(
-            self,
-            lines: List[str],
-            start: int,
-            config: SCSTConfig) -> int:
+        self, lines: List[str], start: int, config: SCSTConfig
+    ) -> int:
         """Parse a HANDLER block containing device handler configuration.
 
         SCST handlers define how different types of storage devices are managed.
@@ -314,7 +343,7 @@ class SCSTConfigParser:
             }
         """
         handler_name, content_start, content_end = self._parse_block_generic(
-            lines, start, 'HANDLER', 'expected HANDLER <name>'
+            lines, start, "HANDLER", "expected HANDLER <name>"
         )
 
         if content_start == content_end:
@@ -332,7 +361,7 @@ class SCSTConfigParser:
                 i += 1
                 continue
 
-            if line.startswith('DEVICE '):
+            if line.startswith("DEVICE "):
                 # Parse device within handler
                 i = self._parse_device_within_handler(lines, i, config, handler_name)
             else:
@@ -344,11 +373,8 @@ class SCSTConfigParser:
         return content_end + 1  # +1 to skip closing brace
 
     def _parse_device_within_handler(
-            self,
-            lines: List[str],
-            start: int,
-            config: SCSTConfig,
-            handler_name: str) -> int:
+        self, lines: List[str], start: int, config: SCSTConfig, handler_name: str
+    ) -> int:
         """Parse a DEVICE block within a HANDLER block.
 
         Device blocks define individual storage devices managed by a handler,
@@ -371,20 +397,26 @@ class SCSTConfigParser:
             }
         """
         device_name, content_start, content_end = self._parse_block_generic(
-            lines, start, 'DEVICE', 'expected DEVICE <name>'
+            lines, start, "DEVICE", "expected DEVICE <name>"
         )
 
         # Parse attributes into a dict first
         attributes = {}
         if content_start != content_end:
-            self._parse_attributes_in_block(lines, content_start, content_end, attributes)
+            self._parse_attributes_in_block(
+                lines, content_start, content_end, attributes
+            )
 
         # Create the appropriate DeviceConfig subclass based on handler type
-        device_config = self._create_device_config(device_name, handler_name, attributes)
+        device_config = self._create_device_config(
+            device_name, handler_name, attributes
+        )
         config.devices[device_name] = device_config
         return content_end + 1  # +1 to skip closing brace
 
-    def _create_device_config(self, device_name: str, handler_name: str, attributes: Dict[str, str]):
+    def _create_device_config(
+        self, device_name: str, handler_name: str, attributes: Dict[str, str]
+    ):
         """Create the appropriate DeviceConfig subclass based on handler type.
 
         Args:
@@ -401,17 +433,19 @@ class SCSTConfigParser:
         try:
             device_config = create_device_config(device_name, handler_name, attributes)
             if device_config is None:
-                raise SCSTError(f"Unsupported handler type '{handler_name}' for device '{device_name}'")
+                raise SCSTError(
+                    f"Unsupported handler type '{handler_name}' for device '{device_name}'"
+                )
             return device_config
 
         except (ValueError, TypeError) as e:
-            raise SCSTError(f"Failed to create device config for '{device_name}' (handler: {handler_name}): {e}")
+            raise SCSTError(
+                f"Failed to create device config for '{device_name}' (handler: {handler_name}): {e}"
+            )
 
     def _parse_target_driver_block(
-            self,
-            lines: List[str],
-            start: int,
-            config: SCSTConfig) -> int:
+        self, lines: List[str], start: int, config: SCSTConfig
+    ) -> int:
         """Parse a TARGET_DRIVER block containing protocol-specific target configuration.
 
         Target drivers handle different storage protocols like iSCSI, Fibre Channel,
@@ -431,14 +465,16 @@ class SCSTConfigParser:
             }
         """
         driver_name, content_start, content_end = self._parse_block_generic(
-            lines, start, 'TARGET_DRIVER', 'expected TARGET_DRIVER <name>'
+            lines, start, "TARGET_DRIVER", "expected TARGET_DRIVER <name>"
         )
 
-        driver_config_dict = {'targets': {}, 'attributes': {}}
+        driver_config_dict = {"targets": {}, "attributes": {}}
 
         if content_start == content_end:
             # Empty block
-            driver_config = DriverConfig.from_config_dict(driver_name, driver_config_dict)
+            driver_config = DriverConfig.from_config_dict(
+                driver_name, driver_config_dict
+            )
             config.drivers[driver_name] = driver_config
             return content_end + 1  # +1 to skip closing brace
 
@@ -450,14 +486,17 @@ class SCSTConfigParser:
                 i += 1
                 continue
 
-            if line.startswith('TARGET '):
-                i = self._parse_target_block(lines, i, driver_config_dict['targets'])
+            if line.startswith("TARGET "):
+                i = self._parse_target_block(lines, i, driver_config_dict["targets"])
             else:
                 # Parse driver-level attributes using single-line parser
                 # Use custom handler to combine multiple values (e.g., multiple IncomingUser)
-                if '=' in line or ' ' in line:
-                    self._parse_single_attribute_line(line, driver_config_dict['attributes'],
-                                                      self._add_target_attribute)
+                if "=" in line or " " in line:
+                    self._parse_single_attribute_line(
+                        line,
+                        driver_config_dict["attributes"],
+                        self._add_target_attribute,
+                    )
                 i += 1
 
         # Create DriverConfig object from parsed data
@@ -465,11 +504,7 @@ class SCSTConfigParser:
         config.drivers[driver_name] = driver_config
         return content_end + 1  # +1 to skip closing brace
 
-    def _parse_target_block(
-            self,
-            lines: List[str],
-            start: int,
-            targets: Dict) -> int:
+    def _parse_target_block(self, lines: List[str], start: int, targets: Dict) -> int:
         r"""Parse a TARGET block within a driver defining a specific target endpoint.
 
         Targets are the endpoints that initiators connect to. Each target can
@@ -494,16 +529,18 @@ class SCSTConfigParser:
         """
         # Use generic parser to extract target name and find block boundaries
         target_name, content_start, content_end = self._parse_block_generic(
-            lines, start, 'TARGET', 'expected TARGET <name>'
+            lines, start, "TARGET", "expected TARGET <name>"
         )
 
         # Initialize target configuration structure
-        target_config_dict = {'luns': {}, 'groups': {}, 'attributes': {}}
+        target_config_dict = {"luns": {}, "groups": {}, "attributes": {}}
 
         if content_start == content_end:
             # Empty block - no braces found, treat as target with no configuration
             self.logger.debug("  No opening brace found for TARGET %s", target_name)
-            target_config = TargetConfig.from_config_dict(target_name, target_config_dict)
+            target_config = TargetConfig.from_config_dict(
+                target_name, target_config_dict
+            )
             targets[target_name] = target_config
             return content_end + 1  # +1 to skip closing brace
 
@@ -516,18 +553,21 @@ class SCSTConfigParser:
                 continue
 
             # Handle nested blocks that have their own specialized parsers
-            if line.startswith('LUN '):
+            if line.startswith("LUN "):
                 # LUN assignments: "LUN 0 device_name"
-                i = self._parse_lun_block(lines, i, target_config_dict['luns'])
-            elif line.startswith('GROUP '):
+                i = self._parse_lun_block(lines, i, target_config_dict["luns"])
+            elif line.startswith("GROUP "):
                 # Initiator groups for access control
-                i = self._parse_group_block(lines, i, target_config_dict['groups'])
+                i = self._parse_group_block(lines, i, target_config_dict["groups"])
             else:
                 # Handle target-level attributes (may have multiple values for same key)
-                if '=' in line or ' ' in line:
+                if "=" in line or " " in line:
                     # Use custom attribute handler that supports combining multiple values
-                    self._parse_single_attribute_line(line, target_config_dict['attributes'],
-                                                      self._add_target_attribute)
+                    self._parse_single_attribute_line(
+                        line,
+                        target_config_dict["attributes"],
+                        self._add_target_attribute,
+                    )
                 i += 1
 
         # Create TargetConfig object from parsed data
@@ -535,11 +575,7 @@ class SCSTConfigParser:
         targets[target_name] = target_config
         return content_end + 1  # +1 to skip the closing brace
 
-    def _parse_lun_block(
-            self,
-            lines: List[str],
-            start: int,
-            luns: Dict) -> int:
+    def _parse_lun_block(self, lines: List[str], start: int, luns: Dict) -> int:
         """Parse a LUN block defining device-to-LUN assignments.
 
         LUNs (Logical Unit Numbers) map storage devices to specific numbers
@@ -558,28 +594,34 @@ class SCSTConfigParser:
         line = lines[start]
         parts = line.split()
         if len(parts) < 2:
-            raise SCSTError(f"Malformed LUN line at {start+1}: '{line}' - expected 'LUN <number> [device]'")
+            raise SCSTError(
+                f"Malformed LUN line at {start + 1}: '{line}' - expected 'LUN <number> [device]'"
+            )
 
         lun_number = parts[1]  # LUN number (e.g., "0", "1", "3")
         device_name = parts[2] if len(parts) > 2 else None  # Optional device name
 
         # Create initial dictionary format for attributes parsing
-        lun_config_dict = {'device': device_name, 'attributes': {}}
+        lun_config_dict = {"device": device_name, "attributes": {}}
 
         # Check if this LUN has an attribute block using generic parser
         # Note: We need special handling since LUN line format is "LUN num device {" not "LUN name {"
-        if line.endswith('{'):
+        if line.endswith("{"):
             # Attributes block starts on same line
             content_start = start + 1
             content_end = self._find_closing_brace(lines, content_start)
             if content_end == -1:
-                raise SCSTError(f"Unmatched braces in LUN {lun_number} starting at line {start+1}")
-        elif start + 1 < len(lines) and lines[start + 1].strip() == '{':
+                raise SCSTError(
+                    f"Unmatched braces in LUN {lun_number} starting at line {start + 1}"
+                )
+        elif start + 1 < len(lines) and lines[start + 1].strip() == "{":
             # Attributes block starts on next line
             content_start = start + 2
             content_end = self._find_closing_brace(lines, start + 1)
             if content_end == -1:
-                raise SCSTError(f"Unmatched braces in LUN {lun_number} starting at line {start+2}")
+                raise SCSTError(
+                    f"Unmatched braces in LUN {lun_number} starting at line {start + 2}"
+                )
         else:
             # No attributes block - simple LUN assignment
             # Create LunConfig object from dictionary
@@ -588,7 +630,9 @@ class SCSTConfigParser:
             return start + 1
 
         # Parse LUN attributes within the block
-        self._parse_attributes_in_block(lines, content_start, content_end, lun_config_dict['attributes'])
+        self._parse_attributes_in_block(
+            lines, content_start, content_end, lun_config_dict["attributes"]
+        )
 
         # Create LunConfig object from dictionary
         lun_config = LunConfig.from_config_dict(lun_number, lun_config_dict)
@@ -601,18 +645,14 @@ class SCSTConfigParser:
         i = start
         while i < len(lines) and brace_count > 0:
             line_content = lines[i].strip()
-            if line_content == '{':
+            if line_content == "{":
                 brace_count += 1
-            elif line_content == '}':
+            elif line_content == "}":
                 brace_count -= 1
             i += 1
         return i - 1 if brace_count == 0 else -1
 
-    def _parse_group_block(
-            self,
-            lines: List[str],
-            start: int,
-            groups: Dict) -> int:
+    def _parse_group_block(self, lines: List[str], start: int, groups: Dict) -> int:
         r"""Parse a GROUP block within a target for access control.
 
         Groups define which initiators can access specific LUNs within a target,
@@ -629,15 +669,17 @@ class SCSTConfigParser:
         """
         # Use generic parser to extract group name and block boundaries
         group_name, content_start, content_end = self._parse_block_generic(
-            lines, start, 'GROUP', 'expected GROUP <name>'
+            lines, start, "GROUP", "expected GROUP <name>"
         )
 
         # Initialize group configuration structure for parsing
-        group_config_dict = {'luns': {}, 'initiators': [], 'attributes': {}}
+        group_config_dict = {"luns": {}, "initiators": [], "attributes": {}}
 
         if content_start == content_end:
             # Empty group block - create InitiatorGroupConfig object
-            group_config = InitiatorGroupConfig.from_config_dict(group_name, group_config_dict)
+            group_config = InitiatorGroupConfig.from_config_dict(
+                group_name, group_config_dict
+            )
             groups[group_name] = group_config
             return content_end + 1  # +1 to skip closing brace
 
@@ -649,30 +691,32 @@ class SCSTConfigParser:
                 i += 1
                 continue
 
-            if line.startswith('LUN '):
+            if line.startswith("LUN "):
                 # LUN assignments specific to this initiator group
-                i = self._parse_lun_block(lines, i, group_config_dict['luns'])
-            elif line.startswith('INITIATOR '):
+                i = self._parse_lun_block(lines, i, group_config_dict["luns"])
+            elif line.startswith("INITIATOR "):
                 # Initiator IQN that belongs to this group
                 initiator = line.split()[1]
-                group_config_dict['initiators'].append(initiator)
+                group_config_dict["initiators"].append(initiator)
                 i += 1
             else:
                 # Parse group-level attributes using single-line parser
-                if '=' in line or ' ' in line:
-                    self._parse_single_attribute_line(line, group_config_dict['attributes'])
+                if "=" in line or " " in line:
+                    self._parse_single_attribute_line(
+                        line, group_config_dict["attributes"]
+                    )
                 i += 1
 
         # Create InitiatorGroupConfig object from parsed data
-        group_config = InitiatorGroupConfig.from_config_dict(group_name, group_config_dict)
+        group_config = InitiatorGroupConfig.from_config_dict(
+            group_name, group_config_dict
+        )
         groups[group_name] = group_config
         return content_end + 1  # +1 to skip closing brace
 
     def _parse_device_group_block(
-            self,
-            lines: List[str],
-            start: int,
-            config: SCSTConfig) -> int:
+        self, lines: List[str], start: int, config: SCSTConfig
+    ) -> int:
         """Parse a DEVICE_GROUP block for device-level access control and ALUA.
 
         Device groups control access to devices at the device level and support
@@ -699,16 +743,20 @@ class SCSTConfigParser:
         """
         # Use generic parser to extract device group name and block boundaries
         group_name, content_start, content_end = self._parse_block_generic(
-            lines, start, 'DEVICE_GROUP', 'expected DEVICE_GROUP <name>'
+            lines, start, "DEVICE_GROUP", "expected DEVICE_GROUP <name>"
         )
 
         # Initialize device group configuration structure
-        group_config = {'devices': [], 'target_groups': {}, 'attributes': {}}
+        group_config = {"devices": [], "target_groups": {}, "attributes": {}}
 
         if content_start == content_end:
             # Empty device group block
-            self.logger.warning("Expected opening brace for device group %s", group_name)
-            config.device_groups[group_name] = DeviceGroupConfig.from_config_dict(group_name, group_config)
+            self.logger.warning(
+                "Expected opening brace for device group %s", group_name
+            )
+            config.device_groups[group_name] = DeviceGroupConfig.from_config_dict(
+                group_name, group_config
+            )
             return content_end + 1  # +1 to skip closing brace
 
         # Parse device group contents within block boundaries
@@ -719,28 +767,30 @@ class SCSTConfigParser:
                 i += 1
                 continue
 
-            if line.startswith('DEVICE '):
+            if line.startswith("DEVICE "):
                 # Device membership in this group
                 device = line.split()[1]
-                group_config['devices'].append(device)
+                group_config["devices"].append(device)
                 i += 1
-            elif line.startswith('TARGET_GROUP '):
+            elif line.startswith("TARGET_GROUP "):
                 # Nested target group for ALUA configuration
-                i = self._parse_target_group_block(lines, i, group_config['target_groups'])
+                i = self._parse_target_group_block(
+                    lines, i, group_config["target_groups"]
+                )
             else:
                 # Parse device group-level attributes using single-line parser
-                if '=' in line or (' ' in line and len(line.split()) == 2):
-                    self._parse_single_attribute_line(line, group_config['attributes'])
+                if "=" in line or (" " in line and len(line.split()) == 2):
+                    self._parse_single_attribute_line(line, group_config["attributes"])
                 i += 1
 
-        config.device_groups[group_name] = DeviceGroupConfig.from_config_dict(group_name, group_config)
+        config.device_groups[group_name] = DeviceGroupConfig.from_config_dict(
+            group_name, group_config
+        )
         return content_end + 1  # +1 to skip closing brace
 
     def _parse_target_group_block(
-            self,
-            lines: List[str],
-            start: int,
-            target_groups: Dict) -> int:
+        self, lines: List[str], start: int, target_groups: Dict
+    ) -> int:
         """Parse a TARGET_GROUP block within a device group for ALUA configuration.
 
         Target groups define different paths/controllers for accessing the same
@@ -755,15 +805,17 @@ class SCSTConfigParser:
         """
         # Use generic parser to extract target group name and block boundaries
         group_name, content_start, content_end = self._parse_block_generic(
-            lines, start, 'TARGET_GROUP', 'expected TARGET_GROUP <name>'
+            lines, start, "TARGET_GROUP", "expected TARGET_GROUP <name>"
         )
 
         # Initialize target group configuration structure
-        group_config = {'targets': [], 'target_attributes': {}, 'attributes': {}}
+        group_config = {"targets": [], "target_attributes": {}, "attributes": {}}
 
         if content_start == content_end:
             # Empty target group block
-            self.logger.warning("Expected opening brace for target group %s", group_name)
+            self.logger.warning(
+                "Expected opening brace for target group %s", group_name
+            )
             target_groups[group_name] = group_config
             return content_end + 1  # +1 to skip closing brace
 
@@ -775,18 +827,20 @@ class SCSTConfigParser:
                 i += 1
                 continue
 
-            if line.startswith('TARGET '):
+            if line.startswith("TARGET "):
                 # Target entries that belong to this target group (for ALUA)
                 i = self._parse_target_group_target_block(
-                    lines, i, group_config['targets'], group_config['target_attributes']
+                    lines, i, group_config["targets"], group_config["target_attributes"]
                 )
             else:
                 # Parse target group-level attributes (group_id, state, etc.)
-                if '=' in line or (' ' in line and len(line.split()) == 2):
-                    self._parse_single_attribute_line(line, group_config['attributes'])
+                if "=" in line or (" " in line and len(line.split()) == 2):
+                    self._parse_single_attribute_line(line, group_config["attributes"])
                 i += 1
 
-        target_groups[group_name] = TargetGroupConfig.from_config_dict(group_name, group_config)
+        target_groups[group_name] = TargetGroupConfig.from_config_dict(
+            group_name, group_config
+        )
         return content_end + 1  # +1 to skip closing brace
 
     def _parse_target_group_target_block(
@@ -811,7 +865,9 @@ class SCSTConfigParser:
         line = lines[start]
         parts = line.split()
         if len(parts) < 2:
-            raise SCSTError(f"Malformed TARGET line at {start+1}: '{line}' - expected 'TARGET <name>'")
+            raise SCSTError(
+                f"Malformed TARGET line at {start + 1}: '{line}' - expected 'TARGET <name>'"
+            )
 
         target_name = parts[1]
 
@@ -819,7 +875,7 @@ class SCSTConfigParser:
         targets.append(target_name)
 
         # Check if this target has attributes (indicated by opening brace)
-        if line.endswith('{'):
+        if line.endswith("{"):
             # TARGET name { ... } format - target has attributes like rel_tgt_id
             target_config = {}
 
@@ -827,10 +883,14 @@ class SCSTConfigParser:
             content_start = start + 1
             content_end = self._find_closing_brace(lines, content_start)
             if content_end == -1:
-                raise SCSTError(f"Unmatched braces in target {target_name} starting at line {start+1}")
+                raise SCSTError(
+                    f"Unmatched braces in target {target_name} starting at line {start + 1}"
+                )
 
             # Parse target attributes within the block using generic parser
-            self._parse_attributes_in_block(lines, content_start, content_end, target_config)
+            self._parse_attributes_in_block(
+                lines, content_start, content_end, target_config
+            )
 
             target_attributes[target_name] = target_config
             return content_end + 1  # +1 to skip closing brace

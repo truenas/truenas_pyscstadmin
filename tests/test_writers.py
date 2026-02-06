@@ -4,6 +4,7 @@ Test suite for SCST writer classes
 This module provides comprehensive tests for the specialized writer classes
 that handle SCST configuration application.
 """
+
 import pytest
 from unittest.mock import Mock, call, patch
 import logging
@@ -44,7 +45,9 @@ class TestDeviceWriter:
         """Create a DeviceWriter instance with mocked dependencies"""
         return DeviceWriter(mock_sysfs, mock_config_reader, mock_logger)
 
-    def test_set_device_attributes_success(self, device_writer, mock_sysfs, mock_logger):
+    def test_set_device_attributes_success(
+        self, device_writer, mock_sysfs, mock_logger
+    ):
         """
         Test successful setting of device attributes
 
@@ -57,11 +60,7 @@ class TestDeviceWriter:
         # Arrange: Set up test data
         handler = "vdisk_fileio"
         device_name = "test_disk"
-        attributes = {
-            "blocksize": "4096",
-            "readonly": "1",
-            "thin_provisioned": "0"
-        }
+        attributes = {"blocksize": "4096", "readonly": "1", "thin_provisioned": "0"}
 
         # Configure mock to simulate successful sysfs writes
         mock_sysfs.write_sysfs.return_value = None
@@ -71,12 +70,21 @@ class TestDeviceWriter:
 
         # Assert: Verify all expected sysfs write operations occurred
         expected_calls = [
-            call("/sys/kernel/scst_tgt/handlers/vdisk_fileio/test_disk/blocksize",
-                 "4096", check_result=False),
-            call("/sys/kernel/scst_tgt/handlers/vdisk_fileio/test_disk/readonly",
-                 "1", check_result=False),
-            call("/sys/kernel/scst_tgt/handlers/vdisk_fileio/test_disk/thin_provisioned",
-                 "0", check_result=False)
+            call(
+                "/sys/kernel/scst_tgt/handlers/vdisk_fileio/test_disk/blocksize",
+                "4096",
+                check_result=False,
+            ),
+            call(
+                "/sys/kernel/scst_tgt/handlers/vdisk_fileio/test_disk/readonly",
+                "1",
+                check_result=False,
+            ),
+            call(
+                "/sys/kernel/scst_tgt/handlers/vdisk_fileio/test_disk/thin_provisioned",
+                "0",
+                check_result=False,
+            ),
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_calls, any_order=True)
 
@@ -87,7 +95,9 @@ class TestDeviceWriter:
         expected_log_calls = [
             call("Set device attribute %s.%s = %s", "test_disk", "blocksize", "4096"),
             call("Set device attribute %s.%s = %s", "test_disk", "readonly", "1"),
-            call("Set device attribute %s.%s = %s", "test_disk", "thin_provisioned", "0")
+            call(
+                "Set device attribute %s.%s = %s", "test_disk", "thin_provisioned", "0"
+            ),
         ]
         mock_logger.debug.assert_has_calls(expected_log_calls, any_order=True)
         assert mock_logger.debug.call_count == 3
@@ -95,7 +105,9 @@ class TestDeviceWriter:
         # Assert: Verify no warning logs were generated (success case)
         mock_logger.warning.assert_not_called()
 
-    def test_set_device_attributes_partial_failure(self, device_writer, mock_sysfs, mock_logger):
+    def test_set_device_attributes_partial_failure(
+        self, device_writer, mock_sysfs, mock_logger
+    ):
         """
         Test handling of partial failures when setting device attributes
 
@@ -109,9 +121,9 @@ class TestDeviceWriter:
         handler = "vdisk_fileio"
         device_name = "test_disk"
         attributes = {
-            "blocksize": "4096",      # This will succeed
-            "readonly": "1",          # This will fail
-            "thin_provisioned": "0"   # This will succeed
+            "blocksize": "4096",  # This will succeed
+            "readonly": "1",  # This will fail
+            "thin_provisioned": "0",  # This will succeed
         }
 
         # Configure mock to simulate partial failure
@@ -131,7 +143,9 @@ class TestDeviceWriter:
         # Assert: Verify debug logs for successful attributes
         successful_debug_calls = [
             call("Set device attribute %s.%s = %s", "test_disk", "blocksize", "4096"),
-            call("Set device attribute %s.%s = %s", "test_disk", "thin_provisioned", "0")
+            call(
+                "Set device attribute %s.%s = %s", "test_disk", "thin_provisioned", "0"
+            ),
         ]
         mock_logger.debug.assert_has_calls(successful_debug_calls, any_order=True)
 
@@ -144,7 +158,9 @@ class TestDeviceWriter:
         assert isinstance(actual_call[0][3], SCSTError)
         assert str(actual_call[0][3]) == "Permission denied for readonly attribute"
 
-    def test_set_device_attributes_empty_attributes(self, device_writer, mock_sysfs, mock_logger):
+    def test_set_device_attributes_empty_attributes(
+        self, device_writer, mock_sysfs, mock_logger
+    ):
         """
         Test behavior with empty attributes dictionary
 
@@ -181,7 +197,7 @@ class TestDeviceWriter:
         device_name = "test_disk"
 
         # Mock filesystem operation to return True (device exists)
-        with patch('os.path.exists', return_value=True) as mock_exists:
+        with patch("os.path.exists", return_value=True) as mock_exists:
             # Act: Call the method under test
             result = device_writer.device_exists(handler, device_name)
 
@@ -204,7 +220,7 @@ class TestDeviceWriter:
         device_name = "nonexistent_disk"
 
         # Mock filesystem operation to return False (device doesn't exist)
-        with patch('os.path.exists', return_value=False) as mock_exists:
+        with patch("os.path.exists", return_value=False) as mock_exists:
             # Act: Call the method under test
             result = device_writer.device_exists(handler, device_name)
 
@@ -235,8 +251,7 @@ class TestDeviceWriter:
 
         # Assert: Verify correct sysfs operation
         mock_sysfs.write_sysfs.assert_called_once_with(
-            "/sys/kernel/scst_tgt/handlers/vdisk_fileio/mgmt",
-            "del_device test_disk"
+            "/sys/kernel/scst_tgt/handlers/vdisk_fileio/mgmt", "del_device test_disk"
         )
 
         # Assert: Verify no error logging
@@ -264,8 +279,7 @@ class TestDeviceWriter:
 
         # Assert: Verify sysfs operation was attempted
         mock_sysfs.write_sysfs.assert_called_once_with(
-            "/sys/kernel/scst_tgt/handlers/vdisk_fileio/mgmt",
-            "del_device test_disk"
+            "/sys/kernel/scst_tgt/handlers/vdisk_fileio/mgmt", "del_device test_disk"
         )
 
         # Assert: Verify error was logged with proper context
@@ -276,7 +290,9 @@ class TestDeviceWriter:
         assert isinstance(actual_call[0][2], SCSTError)
         assert str(actual_call[0][2]) == error_message
 
-    def test_remove_device_by_name_success(self, device_writer, mock_sysfs, mock_logger):
+    def test_remove_device_by_name_success(
+        self, device_writer, mock_sysfs, mock_logger
+    ):
         """
         Test successful device removal when handler is unknown
 
@@ -296,7 +312,7 @@ class TestDeviceWriter:
             # Second call: list devices in vdisk_fileio (empty)
             [],
             # Third call: list devices in dev_disk (contains our device)
-            ["test_disk", "other_disk"]
+            ["test_disk", "other_disk"],
         ]
 
         # Configure successful sysfs write
@@ -309,20 +325,21 @@ class TestDeviceWriter:
         expected_calls = [
             call("/sys/kernel/scst_tgt/handlers"),
             call("/sys/kernel/scst_tgt/handlers/vdisk_fileio"),
-            call("/sys/kernel/scst_tgt/handlers/dev_disk")
+            call("/sys/kernel/scst_tgt/handlers/dev_disk"),
         ]
         mock_sysfs.list_directory.assert_has_calls(expected_calls)
 
         # Assert: Verify device removal from correct handler
         mock_sysfs.write_sysfs.assert_called_once_with(
-            "/sys/kernel/scst_tgt/handlers/dev_disk/mgmt",
-            "del_device test_disk"
+            "/sys/kernel/scst_tgt/handlers/dev_disk/mgmt", "del_device test_disk"
         )
 
         # Assert: Verify no error logging
         mock_logger.warning.assert_not_called()
 
-    def test_remove_device_by_name_not_found(self, device_writer, mock_sysfs, mock_logger):
+    def test_remove_device_by_name_not_found(
+        self, device_writer, mock_sysfs, mock_logger
+    ):
         """
         Test device removal when device is not found in any handler
 
@@ -341,7 +358,7 @@ class TestDeviceWriter:
             # Second call: list devices in vdisk_fileio (doesn't contain device)
             ["other_disk1"],
             # Third call: list devices in dev_disk (doesn't contain device)
-            ["other_disk2"]
+            ["other_disk2"],
         ]
 
         # Act: Call the method under test
@@ -351,7 +368,7 @@ class TestDeviceWriter:
         expected_calls = [
             call("/sys/kernel/scst_tgt/handlers"),
             call("/sys/kernel/scst_tgt/handlers/vdisk_fileio"),
-            call("/sys/kernel/scst_tgt/handlers/dev_disk")
+            call("/sys/kernel/scst_tgt/handlers/dev_disk"),
         ]
         mock_sysfs.list_directory.assert_has_calls(expected_calls)
 
@@ -361,7 +378,9 @@ class TestDeviceWriter:
         # Assert: Verify no error logging
         mock_logger.warning.assert_not_called()
 
-    def test_remove_device_by_name_sysfs_error(self, device_writer, mock_sysfs, mock_logger):
+    def test_remove_device_by_name_sysfs_error(
+        self, device_writer, mock_sysfs, mock_logger
+    ):
         """
         Test device removal when sysfs operations fail
 
@@ -387,7 +406,9 @@ class TestDeviceWriter:
         assert isinstance(actual_call[0][2], SCSTError)
         assert str(actual_call[0][2]) == "Permission denied"
 
-    def test_create_device_with_creation_params_and_attributes(self, device_writer, mock_sysfs):
+    def test_create_device_with_creation_params_and_attributes(
+        self, device_writer, mock_sysfs
+    ):
         """
         Test device creation with both creation parameters and post-creation attributes
 
@@ -405,18 +426,17 @@ class TestDeviceWriter:
             "filename": "/tmp/test.img",
             "size_mb": "1024",
             "cluster_mode": "1",  # Should be placed at end
-            "t10_dev_id": "test_disk_id"
+            "t10_dev_id": "test_disk_id",
         }
-        post_creation_attrs = {
-            "readonly": "0",
-            "rotational": "1"
-        }
+        post_creation_attrs = {"readonly": "0", "rotational": "1"}
 
         # Configure mocks
         mock_sysfs.write_sysfs.return_value = None
 
         # Act: Call the method under test
-        device_writer.create_device(handler, device_name, creation_params, post_creation_attrs)
+        device_writer.create_device(
+            handler, device_name, creation_params, post_creation_attrs
+        )
 
         # Assert: Verify device creation command was sent correctly
         # Should be at least 2 calls: 1 for device creation + N for post-creation attributes
@@ -429,7 +449,9 @@ class TestDeviceWriter:
                 creation_call = call_args
                 break
 
-        assert creation_call is not None, "Device creation call to mgmt interface not found"
+        assert creation_call is not None, (
+            "Device creation call to mgmt interface not found"
+        )
 
         # Verify correct path for device creation
         expected_handler_path = "/sys/kernel/scst_tgt/handlers/vdisk_fileio/mgmt"
@@ -445,8 +467,11 @@ class TestDeviceWriter:
 
         # Assert: Verify post-creation attribute calls were made
         # Should have calls to set readonly and rotational attributes
-        attribute_calls = [call for call in mock_sysfs.write_sysfs.call_args_list
-                           if not call[0][0].endswith("/mgmt")]
+        attribute_calls = [
+            call
+            for call in mock_sysfs.write_sysfs.call_args_list
+            if not call[0][0].endswith("/mgmt")
+        ]
         assert len(attribute_calls) == 2  # readonly and rotational
 
     def test_create_device_no_creation_params(self, device_writer, mock_sysfs):
@@ -468,7 +493,9 @@ class TestDeviceWriter:
         mock_sysfs.write_sysfs.return_value = None
 
         # Act: Call the method under test
-        device_writer.create_device(handler, device_name, creation_params, post_creation_attrs)
+        device_writer.create_device(
+            handler, device_name, creation_params, post_creation_attrs
+        )
 
         # Assert: Verify simple device creation command + attribute setting
         assert mock_sysfs.write_sysfs.call_count == 2  # 1 creation + 1 attribute
@@ -505,7 +532,9 @@ class TestDeviceWriter:
         mock_sysfs.write_sysfs.return_value = None
 
         # Act: Call the method under test
-        device_writer.create_device(handler, device_name, creation_params, post_creation_attrs)
+        device_writer.create_device(
+            handler, device_name, creation_params, post_creation_attrs
+        )
 
         # Assert: Verify only device creation command was sent (no attribute calls)
         mock_sysfs.write_sysfs.assert_called_once()
@@ -538,7 +567,7 @@ class TestDeviceWriter:
             "filename": "/shared/disk.img",
             "cluster_mode": "1",  # This should move to the end
             "t10_dev_id": "shared_disk_id",
-            "size_mb": "2048"
+            "size_mb": "2048",
         }
         post_creation_attrs = {}
 
@@ -546,7 +575,9 @@ class TestDeviceWriter:
         mock_sysfs.write_sysfs.return_value = None
 
         # Act: Call the method under test
-        device_writer.create_device(handler, device_name, creation_params, post_creation_attrs)
+        device_writer.create_device(
+            handler, device_name, creation_params, post_creation_attrs
+        )
 
         # Assert: Verify cluster_mode appears at the end
         call_args = mock_sysfs.write_sysfs.call_args
@@ -555,7 +586,7 @@ class TestDeviceWriter:
         # Split the command to analyze parameter ordering
         # Expected format: "add_device cluster_disk param1=value1;param2=value2;cluster_mode=1;"
         assert command.startswith("add_device cluster_disk ")
-        params_part = command[len("add_device cluster_disk "):]
+        params_part = command[len("add_device cluster_disk ") :]
 
         # cluster_mode should be the last parameter before the final semicolon
         assert params_part.endswith("cluster_mode=1;")
@@ -565,7 +596,9 @@ class TestDeviceWriter:
         assert "t10_dev_id=shared_disk_id" in command
         assert "size_mb=2048" in command
 
-    def test_determine_device_action_skip_matching_config(self, device_writer, mock_sysfs, mock_config_reader):
+    def test_determine_device_action_skip_matching_config(
+        self, device_writer, mock_sysfs, mock_config_reader
+    ):
         """
         Test determine_device_action returns SKIP when device config matches
 
@@ -579,16 +612,21 @@ class TestDeviceWriter:
         handler = "vdisk_fileio"
         device_name = "disk1"
         device_config = Mock()
-        device_config._CREATION_PARAMS = {'filename', 'size_mb', 'blocksize', 'cluster_mode'}
+        device_config._CREATION_PARAMS = {
+            "filename",
+            "size_mb",
+            "blocksize",
+            "cluster_mode",
+        }
         creation_params = {"filename": "/dev/sda", "size_mb": "1024"}
         post_creation_attrs = {"read_only": "1", "rotational": "0"}
 
         # Mock config reader to return matching attributes
         current_attrs = {
-            "filename": "/dev/sda",      # Creation attr matches
-            "size_mb": "1024",           # Creation attr matches
-            "read_only": "1",            # Post-creation attr matches
-            "rotational": "0"            # Post-creation attr matches
+            "filename": "/dev/sda",  # Creation attr matches
+            "size_mb": "1024",  # Creation attr matches
+            "read_only": "1",  # Post-creation attr matches
+            "rotational": "0",  # Post-creation attr matches
         }
         mock_config_reader._get_current_device_attrs.return_value = current_attrs
 
@@ -597,21 +635,29 @@ class TestDeviceWriter:
 
         # Act: Call the method under test
         result = device_writer.determine_device_action(
-            handler, device_name, device_config, creation_params, post_creation_attrs)
+            handler, device_name, device_config, creation_params, post_creation_attrs
+        )
 
         # Assert: Verify correct action returned
         assert result == ConfigAction.SKIP
 
         # Assert: Verify config reader was called correctly
         # Now checks all creation params (not just ones in config) for [key] detection
-        expected_attrs_to_check = {"filename", "size_mb", "blocksize", "cluster_mode", "read_only", "rotational"}
+        expected_attrs_to_check = {
+            "filename",
+            "size_mb",
+            "blocksize",
+            "cluster_mode",
+            "read_only",
+            "rotational",
+        }
         mock_config_reader._get_current_device_attrs.assert_called_once_with(
-            handler, device_name, expected_attrs_to_check)
+            handler, device_name, expected_attrs_to_check
+        )
 
-    def test_determine_device_action_recreate_creation_attrs_differ(self,
-                                                                    device_writer,
-                                                                    mock_sysfs,
-                                                                    mock_config_reader):
+    def test_determine_device_action_recreate_creation_attrs_differ(
+        self, device_writer, mock_sysfs, mock_config_reader
+    ):
         """
         Test determine_device_action returns RECREATE when creation attributes differ
 
@@ -625,15 +671,20 @@ class TestDeviceWriter:
         handler = "vdisk_fileio"
         device_name = "disk1"
         device_config = Mock()
-        device_config._CREATION_PARAMS = {'filename', 'size_mb', 'blocksize', 'cluster_mode'}
+        device_config._CREATION_PARAMS = {
+            "filename",
+            "size_mb",
+            "blocksize",
+            "cluster_mode",
+        }
         creation_params = {"filename": "/dev/sda", "size_mb": "2048"}  # size_mb differs
         post_creation_attrs = {"read_only": "1"}
 
         # Mock config reader - creation attr differs, post-creation matches
         current_attrs = {
-            "filename": "/dev/sda",      # Creation attr matches
-            "size_mb": "1024",           # Creation attr DIFFERS (1024 vs 2048)
-            "read_only": "1"             # Post-creation attr matches
+            "filename": "/dev/sda",  # Creation attr matches
+            "size_mb": "1024",  # Creation attr DIFFERS (1024 vs 2048)
+            "read_only": "1",  # Post-creation attr matches
         }
         mock_config_reader._get_current_device_attrs.return_value = current_attrs
 
@@ -642,18 +693,28 @@ class TestDeviceWriter:
 
         # Act: Call the method under test
         result = device_writer.determine_device_action(
-            handler, device_name, device_config, creation_params, post_creation_attrs)
+            handler, device_name, device_config, creation_params, post_creation_attrs
+        )
 
         # Assert: Verify RECREATE action returned
         assert result == ConfigAction.RECREATE
 
         # Assert: Verify attributes were checked
         # Now checks all creation params (not just ones in config) for [key] detection
-        expected_attrs_to_check = {"filename", "size_mb", "blocksize", "cluster_mode", "read_only"}
+        expected_attrs_to_check = {
+            "filename",
+            "size_mb",
+            "blocksize",
+            "cluster_mode",
+            "read_only",
+        }
         mock_config_reader._get_current_device_attrs.assert_called_once_with(
-            handler, device_name, expected_attrs_to_check)
+            handler, device_name, expected_attrs_to_check
+        )
 
-    def test_determine_device_action_update_post_attrs_differ(self, device_writer, mock_sysfs, mock_config_reader):
+    def test_determine_device_action_update_post_attrs_differ(
+        self, device_writer, mock_sysfs, mock_config_reader
+    ):
         """
         Test determine_device_action returns UPDATE when only post-creation attributes differ
 
@@ -667,16 +728,24 @@ class TestDeviceWriter:
         handler = "vdisk_fileio"
         device_name = "disk1"
         device_config = Mock()
-        device_config._CREATION_PARAMS = {'filename', 'size_mb', 'blocksize', 'cluster_mode'}
+        device_config._CREATION_PARAMS = {
+            "filename",
+            "size_mb",
+            "blocksize",
+            "cluster_mode",
+        }
         creation_params = {"filename": "/dev/sda", "size_mb": "1024"}
-        post_creation_attrs = {"read_only": "1", "rotational": "0"}  # rotational differs
+        post_creation_attrs = {
+            "read_only": "1",
+            "rotational": "0",
+        }  # rotational differs
 
         # Mock config reader - creation attrs match, post-creation differs
         current_attrs = {
-            "filename": "/dev/sda",      # Creation attr matches
-            "size_mb": "1024",           # Creation attr matches
-            "read_only": "1",            # Post-creation attr matches
-            "rotational": "1"            # Post-creation attr DIFFERS (1 vs 0)
+            "filename": "/dev/sda",  # Creation attr matches
+            "size_mb": "1024",  # Creation attr matches
+            "read_only": "1",  # Post-creation attr matches
+            "rotational": "1",  # Post-creation attr DIFFERS (1 vs 0)
         }
         mock_config_reader._get_current_device_attrs.return_value = current_attrs
 
@@ -685,22 +754,29 @@ class TestDeviceWriter:
 
         # Act: Call the method under test
         result = device_writer.determine_device_action(
-            handler, device_name, device_config, creation_params, post_creation_attrs)
+            handler, device_name, device_config, creation_params, post_creation_attrs
+        )
 
         # Assert: Verify UPDATE action returned
         assert result == ConfigAction.UPDATE
 
         # Assert: Verify attributes were checked
         # Now checks all creation params (not just ones in config) for [key] detection
-        expected_attrs_to_check = {"filename", "size_mb", "blocksize", "cluster_mode", "read_only", "rotational"}
+        expected_attrs_to_check = {
+            "filename",
+            "size_mb",
+            "blocksize",
+            "cluster_mode",
+            "read_only",
+            "rotational",
+        }
         mock_config_reader._get_current_device_attrs.assert_called_once_with(
-            handler, device_name, expected_attrs_to_check)
+            handler, device_name, expected_attrs_to_check
+        )
 
-    def test_apply_config_devices_comprehensive_workflow(self,
-                                                         device_writer,
-                                                         mock_sysfs,
-                                                         mock_config_reader,
-                                                         mock_logger):
+    def test_apply_config_devices_comprehensive_workflow(
+        self, device_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test apply_config_devices main entry point with comprehensive device workflow
 
@@ -715,24 +791,32 @@ class TestDeviceWriter:
         # Arrange: Set up test configuration with multiple scenarios
         config = Mock()
         config.devices = {
-            "skip_device": Mock(),      # Exists, config matches, will be skipped
-            "update_device": Mock(),    # Exists, post-creation attrs differ, will be updated
+            "skip_device": Mock(),  # Exists, config matches, will be skipped
+            "update_device": Mock(),  # Exists, post-creation attrs differ, will be updated
             "recreate_device": Mock(),  # Exists, creation attrs differ, will be recreated
-            "new_device": Mock()        # Doesn't exist, will be created
+            "new_device": Mock(),  # Doesn't exist, will be created
         }
 
         # Configure device configurations
         for device_name, device_config in config.devices.items():
             device_config.handler_type = "vdisk_fileio"
-            device_config.creation_attributes = {"filename": f"/dev/{device_name}", "size_mb": "1024"}
-            device_config.post_creation_attributes = {"read_only": "0", "rotational": "1"}
+            device_config.creation_attributes = {
+                "filename": f"/dev/{device_name}",
+                "size_mb": "1024",
+            }
+            device_config.post_creation_attributes = {
+                "read_only": "0",
+                "rotational": "1",
+            }
 
         # Mock device existence - only new_device doesn't exist
         def mock_device_exists(handler, device_name):
             return device_name != "new_device"
 
         # Mock device action determination
-        def mock_determine_device_action(handler, device_name, device_config, creation_params, post_attrs):
+        def mock_determine_device_action(
+            handler, device_name, device_config, creation_params, post_attrs
+        ):
             if device_name == "skip_device":
                 return ConfigAction.SKIP
             elif device_name == "update_device":
@@ -743,7 +827,9 @@ class TestDeviceWriter:
 
         # Mock helper methods
         device_writer.device_exists = Mock(side_effect=mock_device_exists)
-        device_writer.determine_device_action = Mock(side_effect=mock_determine_device_action)
+        device_writer.determine_device_action = Mock(
+            side_effect=mock_determine_device_action
+        )
         device_writer.set_device_attributes = Mock()
         device_writer.remove_device = Mock()
         device_writer.create_device = Mock()
@@ -756,53 +842,89 @@ class TestDeviceWriter:
             call("vdisk_fileio", "skip_device"),
             call("vdisk_fileio", "update_device"),
             call("vdisk_fileio", "recreate_device"),
-            call("vdisk_fileio", "new_device")
+            call("vdisk_fileio", "new_device"),
         ]
-        device_writer.device_exists.assert_has_calls(expected_exists_calls, any_order=True)
+        device_writer.device_exists.assert_has_calls(
+            expected_exists_calls, any_order=True
+        )
 
         # Assert: Verify action determination for existing devices only
         expected_action_calls = [
-            call("vdisk_fileio", "skip_device", config.devices["skip_device"],
-                 config.devices["skip_device"].creation_attributes,
-                 config.devices["skip_device"].post_creation_attributes),
-            call("vdisk_fileio", "update_device", config.devices["update_device"],
-                 config.devices["update_device"].creation_attributes,
-                 config.devices["update_device"].post_creation_attributes),
-            call("vdisk_fileio", "recreate_device", config.devices["recreate_device"],
-                 config.devices["recreate_device"].creation_attributes,
-                 config.devices["recreate_device"].post_creation_attributes)
+            call(
+                "vdisk_fileio",
+                "skip_device",
+                config.devices["skip_device"],
+                config.devices["skip_device"].creation_attributes,
+                config.devices["skip_device"].post_creation_attributes,
+            ),
+            call(
+                "vdisk_fileio",
+                "update_device",
+                config.devices["update_device"],
+                config.devices["update_device"].creation_attributes,
+                config.devices["update_device"].post_creation_attributes,
+            ),
+            call(
+                "vdisk_fileio",
+                "recreate_device",
+                config.devices["recreate_device"],
+                config.devices["recreate_device"].creation_attributes,
+                config.devices["recreate_device"].post_creation_attributes,
+            ),
         ]
-        device_writer.determine_device_action.assert_has_calls(expected_action_calls, any_order=True)
-        assert device_writer.determine_device_action.call_count == 3  # Not called for new_device
+        device_writer.determine_device_action.assert_has_calls(
+            expected_action_calls, any_order=True
+        )
+        assert (
+            device_writer.determine_device_action.call_count == 3
+        )  # Not called for new_device
 
         # Assert: Verify UPDATE action - set attributes only
         device_writer.set_device_attributes.assert_called_once_with(
-            "vdisk_fileio", "update_device",
-            config.devices["update_device"].post_creation_attributes)
+            "vdisk_fileio",
+            "update_device",
+            config.devices["update_device"].post_creation_attributes,
+        )
 
         # Assert: Verify RECREATE action - remove then create
-        device_writer.remove_device.assert_called_once_with("vdisk_fileio", "recreate_device")
+        device_writer.remove_device.assert_called_once_with(
+            "vdisk_fileio", "recreate_device"
+        )
 
         # Assert: Verify device creation for recreated and new devices
         expected_create_calls = [
-            call("vdisk_fileio", "recreate_device",
-                 config.devices["recreate_device"].creation_attributes,
-                 config.devices["recreate_device"].post_creation_attributes),
-            call("vdisk_fileio", "new_device",
-                 config.devices["new_device"].creation_attributes,
-                 config.devices["new_device"].post_creation_attributes)
+            call(
+                "vdisk_fileio",
+                "recreate_device",
+                config.devices["recreate_device"].creation_attributes,
+                config.devices["recreate_device"].post_creation_attributes,
+            ),
+            call(
+                "vdisk_fileio",
+                "new_device",
+                config.devices["new_device"].creation_attributes,
+                config.devices["new_device"].post_creation_attributes,
+            ),
         ]
-        device_writer.create_device.assert_has_calls(expected_create_calls, any_order=True)
+        device_writer.create_device.assert_has_calls(
+            expected_create_calls, any_order=True
+        )
         assert device_writer.create_device.call_count == 2
 
         # Assert: Verify debug logging
-        mock_logger.debug.assert_any_call("Applying device configurations. Found %s devices", 4)
-        mock_logger.debug.assert_any_call("Device %s already exists with matching config, skipping",
-                                          "skip_device")
-        mock_logger.debug.assert_any_call("Device %s exists, updating post-creation attributes only",
-                                          "update_device")
-        mock_logger.debug.assert_any_call("Device %s creation attributes differ, removing and recreating",
-                                          "recreate_device")
+        mock_logger.debug.assert_any_call(
+            "Applying device configurations. Found %s devices", 4
+        )
+        mock_logger.debug.assert_any_call(
+            "Device %s already exists with matching config, skipping", "skip_device"
+        )
+        mock_logger.debug.assert_any_call(
+            "Device %s exists, updating post-creation attributes only", "update_device"
+        )
+        mock_logger.debug.assert_any_call(
+            "Device %s creation attributes differ, removing and recreating",
+            "recreate_device",
+        )
 
 
 class TestTargetWriter:
@@ -826,8 +948,8 @@ class TestTargetWriter:
         mock = Mock()
         # Default mgmt info for testing
         mock._get_target_mgmt_info.return_value = {
-            'target_attributes': {'IncomingUser', 'OutgoingUser'},
-            'driver_attributes': {'MaxSessions'}
+            "target_attributes": {"IncomingUser", "OutgoingUser"},
+            "driver_attributes": {"MaxSessions"},
         }
         return mock
 
@@ -841,7 +963,9 @@ class TestTargetWriter:
         """Create a TargetWriter instance with mocked dependencies"""
         return TargetWriter(mock_sysfs, mock_config_reader, mock_logger)
 
-    def test_set_target_attributes_mgmt_attributes(self, target_writer, mock_sysfs, mock_config_reader, mock_logger):
+    def test_set_target_attributes_mgmt_attributes(
+        self, target_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test setting target attributes that use management interface commands
 
@@ -857,13 +981,13 @@ class TestTargetWriter:
         target_name = "iqn.2023-01.example.com:test"
         attributes = {
             "IncomingUser": "user1 secret123;user2 secret456",  # Multi-value mgmt attribute
-            "OutgoingUser": "outuser outpass"  # Single-value mgmt attribute
+            "OutgoingUser": "outuser outpass",  # Single-value mgmt attribute
         }
 
         # Configure mock config reader to identify these as mgmt attributes
         mock_config_reader._get_target_mgmt_info.return_value = {
-            'target_attributes': {'IncomingUser', 'OutgoingUser'},
-            'driver_attributes': set()
+            "target_attributes": {"IncomingUser", "OutgoingUser"},
+            "driver_attributes": set(),
         }
 
         # Configure successful sysfs writes
@@ -877,15 +1001,21 @@ class TestTargetWriter:
 
         # Assert: Verify correct mgmt commands were sent
         expected_calls = [
-            call("/sys/kernel/scst_tgt/targets/iscsi/mgmt",
-                 "add_target_attribute iqn.2023-01.example.com:test IncomingUser user1 secret123",
-                 check_result=False),
-            call("/sys/kernel/scst_tgt/targets/iscsi/mgmt",
-                 "add_target_attribute iqn.2023-01.example.com:test IncomingUser user2 secret456",
-                 check_result=False),
-            call("/sys/kernel/scst_tgt/targets/iscsi/mgmt",
-                 "add_target_attribute iqn.2023-01.example.com:test OutgoingUser outuser outpass",
-                 check_result=False)
+            call(
+                "/sys/kernel/scst_tgt/targets/iscsi/mgmt",
+                "add_target_attribute iqn.2023-01.example.com:test IncomingUser user1 secret123",
+                check_result=False,
+            ),
+            call(
+                "/sys/kernel/scst_tgt/targets/iscsi/mgmt",
+                "add_target_attribute iqn.2023-01.example.com:test IncomingUser user2 secret456",
+                check_result=False,
+            ),
+            call(
+                "/sys/kernel/scst_tgt/targets/iscsi/mgmt",
+                "add_target_attribute iqn.2023-01.example.com:test OutgoingUser outuser outpass",
+                check_result=False,
+            ),
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_calls, any_order=True)
         assert mock_sysfs.write_sysfs.call_count == 3
@@ -894,18 +1024,29 @@ class TestTargetWriter:
         assert mock_logger.debug.call_count == 3
         mock_logger.debug.assert_any_call(
             "Setting target mgmt attribute %s/%s.%s = %s",
-            "iscsi", "iqn.2023-01.example.com:test", "IncomingUser", "user1 secret123"
+            "iscsi",
+            "iqn.2023-01.example.com:test",
+            "IncomingUser",
+            "user1 secret123",
         )
         mock_logger.debug.assert_any_call(
             "Setting target mgmt attribute %s/%s.%s = %s",
-            "iscsi", "iqn.2023-01.example.com:test", "IncomingUser", "user2 secret456"
+            "iscsi",
+            "iqn.2023-01.example.com:test",
+            "IncomingUser",
+            "user2 secret456",
         )
         mock_logger.debug.assert_any_call(
             "Setting target mgmt attribute %s/%s.%s = %s",
-            "iscsi", "iqn.2023-01.example.com:test", "OutgoingUser", "outuser outpass"
+            "iscsi",
+            "iqn.2023-01.example.com:test",
+            "OutgoingUser",
+            "outuser outpass",
         )
 
-    def test_set_target_attributes_direct_sysfs(self, target_writer, mock_sysfs, mock_config_reader, mock_logger):
+    def test_set_target_attributes_direct_sysfs(
+        self, target_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test setting target attributes that use direct sysfs writes
 
@@ -920,13 +1061,13 @@ class TestTargetWriter:
         target_name = "iqn.2023-01.example.com:test"
         attributes = {
             "enabled": "1",  # Direct sysfs attribute
-            "HeaderDigest": "CRC32C"  # Direct sysfs attribute
+            "HeaderDigest": "CRC32C",  # Direct sysfs attribute
         }
 
         # Configure mock config reader - these are NOT mgmt attributes
         mock_config_reader._get_target_mgmt_info.return_value = {
-            'target_attributes': set(),  # Empty - no mgmt attributes
-            'driver_attributes': set()
+            "target_attributes": set(),  # Empty - no mgmt attributes
+            "driver_attributes": set(),
         }
 
         # Configure successful sysfs writes
@@ -937,10 +1078,16 @@ class TestTargetWriter:
 
         # Assert: Verify direct sysfs writes to target attribute paths
         expected_calls = [
-            call("/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/enabled",
-                 "1", check_result=False),
-            call("/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/HeaderDigest",
-                 "CRC32C", check_result=False)
+            call(
+                "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/enabled",
+                "1",
+                check_result=False,
+            ),
+            call(
+                "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/HeaderDigest",
+                "CRC32C",
+                check_result=False,
+            ),
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_calls, any_order=True)
         assert mock_sysfs.write_sysfs.call_count == 2
@@ -948,7 +1095,9 @@ class TestTargetWriter:
         # Assert: Verify no debug logging for direct sysfs (only mgmt gets debug logs)
         mock_logger.debug.assert_not_called()
 
-    def test_set_target_attributes_mixed_types(self, target_writer, mock_sysfs, mock_config_reader, mock_logger):
+    def test_set_target_attributes_mixed_types(
+        self, target_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test setting a mix of mgmt attributes and direct sysfs attributes
 
@@ -963,13 +1112,13 @@ class TestTargetWriter:
         attributes = {
             "IncomingUser": "user secret",  # Mgmt attribute
             "enabled": "1",  # Direct sysfs attribute
-            "HeaderDigest": "CRC32C"  # Direct sysfs attribute
+            "HeaderDigest": "CRC32C",  # Direct sysfs attribute
         }
 
         # Configure mock config reader
         mock_config_reader._get_target_mgmt_info.return_value = {
-            'target_attributes': {'IncomingUser'},  # Only IncomingUser is mgmt
-            'driver_attributes': set()
+            "target_attributes": {"IncomingUser"},  # Only IncomingUser is mgmt
+            "driver_attributes": set(),
         }
 
         # Configure successful sysfs writes
@@ -982,14 +1131,20 @@ class TestTargetWriter:
         assert mock_sysfs.write_sysfs.call_count == 3
 
         # Check for mgmt command call
-        mgmt_calls = [call for call in mock_sysfs.write_sysfs.call_args_list
-                      if call[0][0].endswith("/mgmt")]
+        mgmt_calls = [
+            call
+            for call in mock_sysfs.write_sysfs.call_args_list
+            if call[0][0].endswith("/mgmt")
+        ]
         assert len(mgmt_calls) == 1
         assert "add_target_attribute" in mgmt_calls[0][0][1]
 
         # Check for direct sysfs calls
-        direct_calls = [call for call in mock_sysfs.write_sysfs.call_args_list
-                        if not call[0][0].endswith("/mgmt")]
+        direct_calls = [
+            call
+            for call in mock_sysfs.write_sysfs.call_args_list
+            if not call[0][0].endswith("/mgmt")
+        ]
         assert len(direct_calls) == 2
 
         # Assert: Verify debug logging only for mgmt attribute
@@ -997,7 +1152,9 @@ class TestTargetWriter:
         # With %s format, attribute name is in args[3] (0=format, 1=driver, 2=target, 3=attr_name, 4=value)
         assert mock_logger.debug.call_args[0][3] == "IncomingUser"
 
-    def test_set_target_attributes_sysfs_failures(self, target_writer, mock_sysfs, mock_config_reader, mock_logger):
+    def test_set_target_attributes_sysfs_failures(
+        self, target_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test error handling when sysfs operations fail during attribute setting
 
@@ -1011,13 +1168,13 @@ class TestTargetWriter:
         target_name = "iqn.2023-01.example.com:test"
         attributes = {
             "IncomingUser": "user secret",  # This will fail
-            "enabled": "1"  # This will succeed
+            "enabled": "1",  # This will succeed
         }
 
         # Configure mock config reader
         mock_config_reader._get_target_mgmt_info.return_value = {
-            'target_attributes': {'IncomingUser'},
-            'driver_attributes': set()
+            "target_attributes": {"IncomingUser"},
+            "driver_attributes": set(),
         }
 
         # Configure mock to simulate partial failure
@@ -1046,7 +1203,9 @@ class TestTargetWriter:
         assert isinstance(actual_call[0][5], SCSTError)
         assert str(actual_call[0][5]) == "Management interface error"
 
-    def test_set_target_attributes_empty_attributes(self, target_writer, mock_sysfs, mock_config_reader, mock_logger):
+    def test_set_target_attributes_empty_attributes(
+        self, target_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test behavior with empty attributes dictionary
 
@@ -1073,7 +1232,9 @@ class TestTargetWriter:
         mock_logger.debug.assert_not_called()
         mock_logger.warning.assert_not_called()
 
-    def test_remove_target_success_with_cleanup(self, target_writer, mock_sysfs, mock_config_reader, mock_logger):
+    def test_remove_target_success_with_cleanup(
+        self, target_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test successful target removal with complete cleanup sequence
 
@@ -1091,13 +1252,20 @@ class TestTargetWriter:
 
         # Configure mock sysfs to simulate target with LUNs and groups
         mock_sysfs.valid_path.side_effect = lambda path: True  # All paths exist
-        mock_sysfs.list_directory.return_value = ["group1", "group2", "mgmt"]  # Groups with mgmt
+        mock_sysfs.list_directory.return_value = [
+            "group1",
+            "group2",
+            "mgmt",
+        ]  # Groups with mgmt
         mock_sysfs.write_sysfs.return_value = None
 
         # Mock the internal helper methods to return success
-        with patch.object(target_writer, '_disable_target_if_possible') as mock_disable, \
-             patch.object(target_writer, '_force_close_target_sessions', return_value=True) as mock_close_sessions:
-
+        with (
+            patch.object(target_writer, "_disable_target_if_possible") as mock_disable,
+            patch.object(
+                target_writer, "_force_close_target_sessions", return_value=True
+            ) as mock_close_sessions,
+        ):
             # Act: Call the method under test
             target_writer.remove_target(driver_name, target_name)
 
@@ -1109,29 +1277,55 @@ class TestTargetWriter:
 
             # Assert: Verify sysfs path validations
             expected_valid_path_calls = [
-                call("/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/luns/mgmt"),
-                call("/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups"),
-                call("/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/group1/luns/mgmt"),
-                call("/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/group2/luns/mgmt")
+                call(
+                    "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/luns/mgmt"
+                ),
+                call(
+                    "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups"
+                ),
+                call(
+                    "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/group1/luns/mgmt"
+                ),
+                call(
+                    "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/group2/luns/mgmt"
+                ),
             ]
-            mock_sysfs.valid_path.assert_has_calls(expected_valid_path_calls, any_order=True)
+            mock_sysfs.valid_path.assert_has_calls(
+                expected_valid_path_calls, any_order=True
+            )
 
             # Assert: Verify cleanup operations were performed in correct sequence
             expected_write_calls = [
                 # Clear target LUNs
-                call("/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/luns/mgmt", "clear"),
+                call(
+                    "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/luns/mgmt",
+                    "clear",
+                ),
                 # Clear group1 LUNs
-                call("/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/group1/luns/mgmt",
-                     "clear"),
+                call(
+                    "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/group1/luns/mgmt",
+                    "clear",
+                ),
                 # Remove group1
-                call("/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/mgmt", "del group1"),
+                call(
+                    "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/mgmt",
+                    "del group1",
+                ),
                 # Clear group2 LUNs
-                call("/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/group2/luns/mgmt",
-                     "clear"),
+                call(
+                    "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/group2/luns/mgmt",
+                    "clear",
+                ),
                 # Remove group2
-                call("/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/mgmt", "del group2"),
+                call(
+                    "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/mgmt",
+                    "del group2",
+                ),
                 # Remove target itself
-                call("/sys/kernel/scst_tgt/targets/iscsi/mgmt", "del_target iqn.2023-01.example.com:test")
+                call(
+                    "/sys/kernel/scst_tgt/targets/iscsi/mgmt",
+                    "del_target iqn.2023-01.example.com:test",
+                ),
             ]
             mock_sysfs.write_sysfs.assert_has_calls(expected_write_calls)
             assert mock_sysfs.write_sysfs.call_count == 6
@@ -1141,7 +1335,9 @@ class TestTargetWriter:
                 "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups"
             )
 
-    def test_remove_target_sysfs_error_handling(self, target_writer, mock_sysfs, mock_config_reader, mock_logger):
+    def test_remove_target_sysfs_error_handling(
+        self, target_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test error handling when sysfs operations fail during target removal
 
@@ -1160,9 +1356,12 @@ class TestTargetWriter:
         mock_sysfs.write_sysfs.side_effect = SCSTError("Target is in use")
 
         # Mock helper methods
-        with patch.object(target_writer, '_disable_target_if_possible') as mock_disable, \
-             patch.object(target_writer, '_force_close_target_sessions', return_value=True) as mock_close_sessions:
-
+        with (
+            patch.object(target_writer, "_disable_target_if_possible") as mock_disable,
+            patch.object(
+                target_writer, "_force_close_target_sessions", return_value=True
+            ) as mock_close_sessions,
+        ):
             # Act: Call the method under test (should not raise exception)
             target_writer.remove_target(driver_name, target_name)
 
@@ -1179,11 +1378,9 @@ class TestTargetWriter:
             mock_disable.assert_called_once_with(driver_name, target_name)
             mock_close_sessions.assert_called_once_with(driver_name, target_name)
 
-    def test_update_target_attributes_with_change_detection(self,
-                                                            target_writer,
-                                                            mock_sysfs,
-                                                            mock_config_reader,
-                                                            mock_logger):
+    def test_update_target_attributes_with_change_detection(
+        self, target_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test update_target_attributes with intelligent change detection and mgmt handling
 
@@ -1199,21 +1396,21 @@ class TestTargetWriter:
         target_name = "iqn.2023-01.example.com:test"
         desired_attrs = {
             "IncomingUser": "newuser newsecret",  # Mgmt attr, differs, needs removal+update
-            "HeaderDigest": "CRC32C",             # Direct attr, differs, needs update
-            "enabled": "1",                       # Direct attr, same, skip
-            "rotational": "0"                     # Direct attr, current is None but desired is "0", skip
+            "HeaderDigest": "CRC32C",  # Direct attr, differs, needs update
+            "enabled": "1",  # Direct attr, same, skip
+            "rotational": "0",  # Direct attr, current is None but desired is "0", skip
         }
         current_attrs = {
             "IncomingUser": "olduser oldsecret",  # Different value
-            "HeaderDigest": "None",               # Different value
-            "enabled": "1",                       # Same value
-            "rotational": None                    # None value with desired "0"
+            "HeaderDigest": "None",  # Different value
+            "enabled": "1",  # Same value
+            "rotational": None,  # None value with desired "0"
         }
 
         # Configure mock config reader to identify mgmt attributes
         mock_config_reader._get_target_mgmt_info.return_value = {
-            'target_attributes': {'IncomingUser'},  # Only IncomingUser is mgmt-managed
-            'driver_attributes': set()
+            "target_attributes": {"IncomingUser"},  # Only IncomingUser is mgmt-managed
+            "driver_attributes": set(),
         }
 
         # Mock helper methods
@@ -1221,7 +1418,9 @@ class TestTargetWriter:
         target_writer.set_target_attributes = Mock()
 
         # Act: Call the method under test
-        target_writer.update_target_attributes(driver_name, target_name, desired_attrs, current_attrs)
+        target_writer.update_target_attributes(
+            driver_name, target_name, desired_attrs, current_attrs
+        )
 
         # Assert: Verify mgmt interface was queried
         mock_config_reader._get_target_mgmt_info.assert_called_once_with(driver_name)
@@ -1234,7 +1433,7 @@ class TestTargetWriter:
         # Assert: Verify only differing attributes are updated (not enabled or rotational)
         expected_attrs_to_update = {
             "IncomingUser": "newuser newsecret",
-            "HeaderDigest": "CRC32C"
+            "HeaderDigest": "CRC32C",
         }
         target_writer.set_target_attributes.assert_called_once_with(
             driver_name, target_name, expected_attrs_to_update
@@ -1243,22 +1442,26 @@ class TestTargetWriter:
         # Assert: Verify debug logging for attribute comparisons
         mock_logger.debug.assert_any_call(
             "Target attribute '%s' needs update: current='%s' -> desired='%s'",
-            "IncomingUser", "olduser oldsecret", "newuser newsecret"
+            "IncomingUser",
+            "olduser oldsecret",
+            "newuser newsecret",
         )
         mock_logger.debug.assert_any_call(
             "Target attribute '%s' needs update: current='%s' -> desired='%s'",
-            "HeaderDigest", "None", "CRC32C"
+            "HeaderDigest",
+            "None",
+            "CRC32C",
         )
         mock_logger.debug.assert_any_call(
             "Updating %s target attributes for %s/%s",
-            2, "iscsi", "iqn.2023-01.example.com:test"
+            2,
+            "iscsi",
+            "iqn.2023-01.example.com:test",
         )
 
-    def test_apply_config_assignments_comprehensive_workflow(self,
-                                                             target_writer,
-                                                             mock_sysfs,
-                                                             mock_config_reader,
-                                                             mock_logger):
+    def test_apply_config_assignments_comprehensive_workflow(
+        self, target_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test apply_config_assignments with comprehensive target configuration workflow
 
@@ -1272,15 +1475,13 @@ class TestTargetWriter:
         """
         # Arrange: Set up test configuration
         config = Mock()
-        config.drivers = {
-            "iscsi": Mock()
-        }
+        config.drivers = {"iscsi": Mock()}
 
         # Configure driver with two targets: one existing, one new
         driver_config = config.drivers["iscsi"]
         driver_config.targets = {
             "existing_target": Mock(),  # Exists, will be updated
-            "new_target": Mock()        # Doesn't exist, will be created
+            "new_target": Mock(),  # Doesn't exist, will be created
         }
 
         # Configure existing target (attributes differ, groups differ)
@@ -1297,10 +1498,18 @@ class TestTargetWriter:
 
         # Mock helper methods with specific return values
         target_writer._target_exists = Mock(side_effect=mock_target_exists)
-        target_writer._target_config_differs = Mock(return_value=True)  # Attributes differ
-        target_writer._direct_lun_assignments_differ = Mock(return_value=False)  # LUNs match
-        target_writer._group_lun_assignments_differ = Mock(return_value=False)  # Group LUNs match
-        target_writer._group_assignments_differ = Mock(return_value=True)  # Groups differ
+        target_writer._target_config_differs = Mock(
+            return_value=True
+        )  # Attributes differ
+        target_writer._direct_lun_assignments_differ = Mock(
+            return_value=False
+        )  # LUNs match
+        target_writer._group_lun_assignments_differ = Mock(
+            return_value=False
+        )  # Group LUNs match
+        target_writer._group_assignments_differ = Mock(
+            return_value=True
+        )  # Groups differ
         target_writer.update_target_attributes = Mock()
         target_writer._update_target_groups = Mock()
         target_writer.ensure_hardware_targets_enabled = Mock()
@@ -1309,10 +1518,13 @@ class TestTargetWriter:
         target_writer.apply_group_assignments = Mock()
 
         # Mock config reader methods
-        mock_config_reader._get_current_target_attrs.return_value = {"HeaderDigest": "None", "enabled": "1"}
+        mock_config_reader._get_current_target_attrs.return_value = {
+            "HeaderDigest": "None",
+            "enabled": "1",
+        }
         mock_config_reader._get_target_mgmt_info.return_value = {
             "create_params": {"node_name"},
-            "target_attributes": {"IncomingUser", "OutgoingUser"}
+            "target_attributes": {"IncomingUser", "OutgoingUser"},
         }
 
         # Mock _get_target_create_params to return creation params for new_target only
@@ -1320,7 +1532,10 @@ class TestTargetWriter:
             if "node_name" in attrs:
                 return {"node_name": attrs["node_name"]}
             return {}
-        mock_config_reader._get_target_create_params.side_effect = mock_get_create_params
+
+        mock_config_reader._get_target_create_params.side_effect = (
+            mock_get_create_params
+        )
 
         # Configure successful sysfs writes
         mock_sysfs.write_sysfs.return_value = None
@@ -1331,9 +1546,11 @@ class TestTargetWriter:
         # Assert: Verify target existence checks
         expected_exists_calls = [
             call("iscsi", "existing_target"),
-            call("iscsi", "new_target")
+            call("iscsi", "new_target"),
         ]
-        target_writer._target_exists.assert_has_calls(expected_exists_calls, any_order=True)
+        target_writer._target_exists.assert_has_calls(
+            expected_exists_calls, any_order=True
+        )
 
         # Assert: Verify existing target updates
         # Attributes should be updated (they differ)
@@ -1344,24 +1561,36 @@ class TestTargetWriter:
         )
 
         # Assert: Verify new target creation
-        target_writer.ensure_hardware_targets_enabled.assert_called_once_with("iscsi", driver_config)
+        target_writer.ensure_hardware_targets_enabled.assert_called_once_with(
+            "iscsi", driver_config
+        )
         mock_sysfs.write_sysfs.assert_called_with(
             "/sys/kernel/scst_tgt/targets/iscsi/mgmt",
-            "add_target new_target node_name=iqn.example:new"
+            "add_target new_target node_name=iqn.example:new",
         )
 
         # Assert: Verify post-creation attribute setting for new target
         target_writer.set_target_attributes.assert_called_once_with(
-            "iscsi", "new_target", {"enabled": "1"}  # node_name excluded as creation param
+            "iscsi",
+            "new_target",
+            {"enabled": "1"},  # node_name excluded as creation param
         )
 
         # Assert: Verify LUN and group assignments applied for new target
-        target_writer.apply_lun_assignments.assert_called_with("iscsi", "new_target", new_target)
-        target_writer.apply_group_assignments.assert_called_with("iscsi", "new_target", new_target)
+        target_writer.apply_lun_assignments.assert_called_with(
+            "iscsi", "new_target", new_target
+        )
+        target_writer.apply_group_assignments.assert_called_with(
+            "iscsi", "new_target", new_target
+        )
 
         # Assert: Verify debug logging
-        mock_logger.debug.assert_any_call("Target attributes differ for %s/%s, updating", "iscsi", "existing_target")
-        mock_logger.debug.assert_any_call("Group assignments differ for %s/%s, updating", "iscsi", "existing_target")
+        mock_logger.debug.assert_any_call(
+            "Target attributes differ for %s/%s, updating", "iscsi", "existing_target"
+        )
+        mock_logger.debug.assert_any_call(
+            "Group assignments differ for %s/%s, updating", "iscsi", "existing_target"
+        )
 
     def test_target_exists_true(self, target_writer, mock_sysfs):
         """
@@ -1377,7 +1606,7 @@ class TestTargetWriter:
         target_name = "iqn.2023-01.example.com:test"
 
         # Mock filesystem operation to return True (target exists)
-        with patch('os.path.exists', return_value=True) as mock_exists:
+        with patch("os.path.exists", return_value=True) as mock_exists:
             # Act: Call the method under test
             result = target_writer._target_exists(driver, target_name)
 
@@ -1401,7 +1630,7 @@ class TestTargetWriter:
         target_name = "20:00:00:25:B5:00:00:00"
 
         # Mock filesystem operation to return False (target doesn't exist)
-        with patch('os.path.exists', return_value=False) as mock_exists:
+        with patch("os.path.exists", return_value=False) as mock_exists:
             # Act: Call the method under test
             result = target_writer._target_exists(driver, target_name)
 
@@ -1427,7 +1656,10 @@ class TestTargetWriter:
         target = "iqn.2023-01.example.com:test"
         group_name = "windows_clients"
         group_config = Mock()
-        group_config.initiators = ["iqn.1991-05.com.microsoft:client1", "iqn.1991-05.com.microsoft:client2"]
+        group_config.initiators = [
+            "iqn.1991-05.com.microsoft:client1",
+            "iqn.1991-05.com.microsoft:client2",
+        ]
         group_config.luns = {"0": {}, "1": {}}  # LUN numbers as keys
 
         group_path = "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/windows_clients"
@@ -1440,7 +1672,11 @@ class TestTargetWriter:
 
         def mock_listdir(path):
             if path == initiators_path:
-                return ["iqn.1991-05.com.microsoft:client1", "iqn.1991-05.com.microsoft:client2", "mgmt"]
+                return [
+                    "iqn.1991-05.com.microsoft:client1",
+                    "iqn.1991-05.com.microsoft:client2",
+                    "mgmt",
+                ]
             elif path == luns_path:
                 return ["0", "1", "mgmt"]  # LUN directories
             return []
@@ -1453,18 +1689,23 @@ class TestTargetWriter:
             # LUN entries are directories, mgmt is excluded
             return "luns/" in path and not path.endswith("/mgmt")
 
-        with patch('os.path.exists', side_effect=mock_exists), \
-             patch('os.listdir', side_effect=mock_listdir), \
-             patch('os.path.isfile', side_effect=mock_isfile), \
-             patch('os.path.isdir', side_effect=mock_isdir):
-
+        with (
+            patch("os.path.exists", side_effect=mock_exists),
+            patch("os.listdir", side_effect=mock_listdir),
+            patch("os.path.isfile", side_effect=mock_isfile),
+            patch("os.path.isdir", side_effect=mock_isdir),
+        ):
             # Act: Call the method under test
-            result = target_writer._group_config_matches(driver, target, group_name, group_config)
+            result = target_writer._group_config_matches(
+                driver, target, group_name, group_config
+            )
 
         # Assert: Verify method returns True for matching configuration
         assert result is True
 
-    def test_group_config_matches_false_initiators_differ(self, target_writer, mock_sysfs):
+    def test_group_config_matches_false_initiators_differ(
+        self, target_writer, mock_sysfs
+    ):
         """
         Test _group_config_matches returns False when initiator lists differ
 
@@ -1479,7 +1720,10 @@ class TestTargetWriter:
         target = "iqn.2023-01.example.com:test"
         group_name = "linux_clients"
         group_config = Mock()
-        group_config.initiators = ["iqn.1993-08.org.debian:client1", "iqn.1993-08.org.debian:client2"]
+        group_config.initiators = [
+            "iqn.1993-08.org.debian:client1",
+            "iqn.1993-08.org.debian:client2",
+        ]
         group_config.luns = {"0": {}}
 
         group_path = "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/linux_clients"
@@ -1491,18 +1735,25 @@ class TestTargetWriter:
 
         def mock_listdir(path):
             if path == initiators_path:
-                return ["iqn.1993-08.org.debian:client1", "iqn.1993-08.org.debian:different_client", "mgmt"]
+                return [
+                    "iqn.1993-08.org.debian:client1",
+                    "iqn.1993-08.org.debian:different_client",
+                    "mgmt",
+                ]
             return []
 
         def mock_isfile(path):
             return "initiators/" in path and not path.endswith("/mgmt")
 
-        with patch('os.path.exists', side_effect=mock_exists), \
-             patch('os.listdir', side_effect=mock_listdir), \
-             patch('os.path.isfile', side_effect=mock_isfile):
-
+        with (
+            patch("os.path.exists", side_effect=mock_exists),
+            patch("os.listdir", side_effect=mock_listdir),
+            patch("os.path.isfile", side_effect=mock_isfile),
+        ):
             # Act: Call the method under test
-            result = target_writer._group_config_matches(driver, target, group_name, group_config)
+            result = target_writer._group_config_matches(
+                driver, target, group_name, group_config
+            )
 
         # Assert: Verify method returns False for differing initiators
         assert result is False
@@ -1537,7 +1788,11 @@ class TestTargetWriter:
             if path == initiators_path:
                 return ["iqn.example:client1", "mgmt"]  # Matching initiators
             elif path == luns_path:
-                return ["0", "2", "mgmt"]  # Current LUNs: 0, 2 (differs from desired 0, 1)
+                return [
+                    "0",
+                    "2",
+                    "mgmt",
+                ]  # Current LUNs: 0, 2 (differs from desired 0, 1)
             return []
 
         def mock_isfile(path):
@@ -1546,18 +1801,23 @@ class TestTargetWriter:
         def mock_isdir(path):
             return "luns/" in path and not path.endswith("/mgmt")
 
-        with patch('os.path.exists', side_effect=mock_exists), \
-             patch('os.listdir', side_effect=mock_listdir), \
-             patch('os.path.isfile', side_effect=mock_isfile), \
-             patch('os.path.isdir', side_effect=mock_isdir):
-
+        with (
+            patch("os.path.exists", side_effect=mock_exists),
+            patch("os.listdir", side_effect=mock_listdir),
+            patch("os.path.isfile", side_effect=mock_isfile),
+            patch("os.path.isdir", side_effect=mock_isdir),
+        ):
             # Act: Call the method under test
-            result = target_writer._group_config_matches(driver, target, group_name, group_config)
+            result = target_writer._group_config_matches(
+                driver, target, group_name, group_config
+            )
 
         # Assert: Verify method returns False for differing LUN assignments
         assert result is False
 
-    def test_group_assignments_differ_false_matching_config(self, target_writer, mock_sysfs):
+    def test_group_assignments_differ_false_matching_config(
+        self, target_writer, mock_sysfs
+    ):
         """
         Test _group_assignments_differ returns False when group assignments match
 
@@ -1572,12 +1832,11 @@ class TestTargetWriter:
         driver = "iscsi"
         target = "iqn.2023-01.example.com:test"
         target_config = Mock()
-        target_config.groups = {
-            "windows_clients": Mock(),
-            "linux_clients": Mock()
-        }
+        target_config.groups = {"windows_clients": Mock(), "linux_clients": Mock()}
 
-        groups_path = "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups"
+        groups_path = (
+            "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups"
+        )
 
         # Mock filesystem operations
         def mock_exists(path):
@@ -1585,7 +1844,11 @@ class TestTargetWriter:
 
         def mock_listdir(path):
             if path == groups_path:
-                return ["windows_clients", "linux_clients", "mgmt"]  # Current groups match desired
+                return [
+                    "windows_clients",
+                    "linux_clients",
+                    "mgmt",
+                ]  # Current groups match desired
             return []
 
         def mock_isdir(path):
@@ -1594,14 +1857,19 @@ class TestTargetWriter:
 
         # Mock helper methods to return matching configurations
         target_writer._group_exists = Mock(return_value=True)
-        target_writer._group_config_matches = Mock(return_value=True)  # All groups match
+        target_writer._group_config_matches = Mock(
+            return_value=True
+        )  # All groups match
 
-        with patch('os.path.exists', side_effect=mock_exists), \
-             patch('os.listdir', side_effect=mock_listdir), \
-             patch('os.path.isdir', side_effect=mock_isdir):
-
+        with (
+            patch("os.path.exists", side_effect=mock_exists),
+            patch("os.listdir", side_effect=mock_listdir),
+            patch("os.path.isdir", side_effect=mock_isdir),
+        ):
             # Act: Call the method under test
-            result = target_writer._group_assignments_differ(driver, target, target_config)
+            result = target_writer._group_assignments_differ(
+                driver, target, target_config
+            )
 
         # Assert: Verify method returns False for matching assignments
         assert result is False
@@ -1609,17 +1877,30 @@ class TestTargetWriter:
         # Assert: Verify group existence and config matching checks
         expected_exists_calls = [
             call(driver, target, "windows_clients"),
-            call(driver, target, "linux_clients")
+            call(driver, target, "linux_clients"),
         ]
-        target_writer._group_exists.assert_has_calls(expected_exists_calls, any_order=True)
+        target_writer._group_exists.assert_has_calls(
+            expected_exists_calls, any_order=True
+        )
 
         expected_config_calls = [
-            call(driver, target, "windows_clients", target_config.groups["windows_clients"]),
-            call(driver, target, "linux_clients", target_config.groups["linux_clients"])
+            call(
+                driver,
+                target,
+                "windows_clients",
+                target_config.groups["windows_clients"],
+            ),
+            call(
+                driver, target, "linux_clients", target_config.groups["linux_clients"]
+            ),
         ]
-        target_writer._group_config_matches.assert_has_calls(expected_config_calls, any_order=True)
+        target_writer._group_config_matches.assert_has_calls(
+            expected_config_calls, any_order=True
+        )
 
-    def test_group_assignments_differ_true_group_membership_differs(self, target_writer, mock_sysfs):
+    def test_group_assignments_differ_true_group_membership_differs(
+        self, target_writer, mock_sysfs
+    ):
         """
         Test _group_assignments_differ returns True when group membership differs
 
@@ -1635,10 +1916,12 @@ class TestTargetWriter:
         target_config = Mock()
         target_config.groups = {
             "windows_clients": Mock(),
-            "mac_clients": Mock()  # Desired: windows_clients, mac_clients
+            "mac_clients": Mock(),  # Desired: windows_clients, mac_clients
         }
 
-        groups_path = "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups"
+        groups_path = (
+            "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups"
+        )
 
         # Mock filesystem operations - different current groups
         def mock_exists(path):
@@ -1646,7 +1929,11 @@ class TestTargetWriter:
 
         def mock_listdir(path):
             if path == groups_path:
-                return ["windows_clients", "linux_clients", "mgmt"]  # Current: windows_clients, linux_clients
+                return [
+                    "windows_clients",
+                    "linux_clients",
+                    "mgmt",
+                ]  # Current: windows_clients, linux_clients
             return []
 
         def mock_isdir(path):
@@ -1656,12 +1943,15 @@ class TestTargetWriter:
         target_writer._group_exists = Mock()
         target_writer._group_config_matches = Mock()
 
-        with patch('os.path.exists', side_effect=mock_exists), \
-             patch('os.listdir', side_effect=mock_listdir), \
-             patch('os.path.isdir', side_effect=mock_isdir):
-
+        with (
+            patch("os.path.exists", side_effect=mock_exists),
+            patch("os.listdir", side_effect=mock_listdir),
+            patch("os.path.isdir", side_effect=mock_isdir),
+        ):
             # Act: Call the method under test
-            result = target_writer._group_assignments_differ(driver, target, target_config)
+            result = target_writer._group_assignments_differ(
+                driver, target, target_config
+            )
 
         # Assert: Verify method returns True for differing group membership
         assert result is True
@@ -1670,7 +1960,9 @@ class TestTargetWriter:
         target_writer._group_exists.assert_not_called()
         target_writer._group_config_matches.assert_not_called()
 
-    def test_group_assignments_differ_true_group_config_differs(self, target_writer, mock_sysfs):
+    def test_group_assignments_differ_true_group_config_differs(
+        self, target_writer, mock_sysfs
+    ):
         """
         Test _group_assignments_differ returns True when group configuration differs
 
@@ -1684,12 +1976,11 @@ class TestTargetWriter:
         driver = "iscsi"
         target = "iqn.2023-01.example.com:test"
         target_config = Mock()
-        target_config.groups = {
-            "storage_group": Mock(),
-            "backup_group": Mock()
-        }
+        target_config.groups = {"storage_group": Mock(), "backup_group": Mock()}
 
-        groups_path = "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups"
+        groups_path = (
+            "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups"
+        )
 
         # Mock filesystem operations - matching group membership
         def mock_exists(path):
@@ -1697,7 +1988,11 @@ class TestTargetWriter:
 
         def mock_listdir(path):
             if path == groups_path:
-                return ["storage_group", "backup_group", "mgmt"]  # Current groups match desired
+                return [
+                    "storage_group",
+                    "backup_group",
+                    "mgmt",
+                ]  # Current groups match desired
             return []
 
         def mock_isdir(path):
@@ -1710,14 +2005,20 @@ class TestTargetWriter:
             if group_name == "storage_group":
                 return False  # First group differs
             return True  # Other groups match (but shouldn't be checked due to early return)
-        target_writer._group_config_matches = Mock(side_effect=mock_group_config_matches)
 
-        with patch('os.path.exists', side_effect=mock_exists), \
-             patch('os.listdir', side_effect=mock_listdir), \
-             patch('os.path.isdir', side_effect=mock_isdir):
+        target_writer._group_config_matches = Mock(
+            side_effect=mock_group_config_matches
+        )
 
+        with (
+            patch("os.path.exists", side_effect=mock_exists),
+            patch("os.listdir", side_effect=mock_listdir),
+            patch("os.path.isdir", side_effect=mock_isdir),
+        ):
             # Act: Call the method under test
-            result = target_writer._group_assignments_differ(driver, target, target_config)
+            result = target_writer._group_assignments_differ(
+                driver, target, target_config
+            )
 
         # Assert: Verify method returns True for differing group configuration
         assert result is True
@@ -1732,11 +2033,9 @@ class TestTargetWriter:
         # At least one group config should be checked, and method returns on first difference
         assert target_writer._group_config_matches.call_count >= 1
 
-    def test_apply_group_assignments_comprehensive_workflow(self,
-                                                            target_writer,
-                                                            mock_sysfs,
-                                                            mock_config_reader,
-                                                            mock_logger):
+    def test_apply_group_assignments_comprehensive_workflow(
+        self, target_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test apply_group_assignments with comprehensive group configuration workflow
 
@@ -1754,8 +2053,8 @@ class TestTargetWriter:
         target_config = Mock()
         target_config.groups = {
             "existing_group": Mock(),  # Exists with matching config, will be skipped
-            "update_group": Mock(),    # Exists but config differs, will be updated
-            "new_group": Mock()        # Doesn't exist, will be created
+            "update_group": Mock(),  # Exists but config differs, will be updated
+            "new_group": Mock(),  # Doesn't exist, will be created
         }
 
         # Configure existing group (matching config)
@@ -1766,7 +2065,10 @@ class TestTargetWriter:
 
         # Configure update group (differing config)
         update_group = target_config.groups["update_group"]
-        update_group.initiators = ["iqn.example:client2", "iqn.example:client\\#3"]  # Test escaping
+        update_group.initiators = [
+            "iqn.example:client2",
+            "iqn.example:client\\#3",
+        ]  # Test escaping
         update_group.luns = {"0": Mock(), "1": Mock()}
         update_group.luns["0"].device = "disk1"
         update_group.luns["1"].device = "disk2"
@@ -1785,7 +2087,9 @@ class TestTargetWriter:
             return group_name == "existing_group"  # Only existing_group matches
 
         target_writer._group_exists = Mock(side_effect=mock_group_exists)
-        target_writer._group_config_matches = Mock(side_effect=mock_group_config_matches)
+        target_writer._group_config_matches = Mock(
+            side_effect=mock_group_config_matches
+        )
 
         # Configure successful sysfs writes
         mock_sysfs.write_sysfs.return_value = None
@@ -1797,36 +2101,53 @@ class TestTargetWriter:
         expected_exists_calls = [
             call(driver, target, "existing_group"),
             call(driver, target, "update_group"),
-            call(driver, target, "new_group")
+            call(driver, target, "new_group"),
         ]
-        target_writer._group_exists.assert_has_calls(expected_exists_calls, any_order=True)
+        target_writer._group_exists.assert_has_calls(
+            expected_exists_calls, any_order=True
+        )
 
         expected_config_calls = [
             call(driver, target, "existing_group", existing_group),
-            call(driver, target, "update_group", update_group)
+            call(driver, target, "update_group", update_group),
             # new_group not checked because it doesn't exist
         ]
-        target_writer._group_config_matches.assert_has_calls(expected_config_calls, any_order=True)
+        target_writer._group_config_matches.assert_has_calls(
+            expected_config_calls, any_order=True
+        )
 
         # Assert: Verify group creation calls
         base_mgmt_path = "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups/mgmt"
         expected_create_calls = [
             call(base_mgmt_path, "create update_group"),
-            call(base_mgmt_path, "create new_group")
+            call(base_mgmt_path, "create new_group"),
             # existing_group not created (skipped due to matching config)
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_create_calls, any_order=True)
 
         # Assert: Verify initiator assignments (with escaping)
-        base_initiators_path = "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups"
+        base_initiators_path = (
+            "/sys/kernel/scst_tgt/targets/iscsi/iqn.2023-01.example.com:test/ini_groups"
+        )
         expected_initiator_calls = [
             # update_group initiators - client#3, escaping removed
-            call(f"{base_initiators_path}/update_group/initiators/mgmt", "add iqn.example:client2"),
-            call(f"{base_initiators_path}/update_group/initiators/mgmt", "add iqn.example:client#3"),
+            call(
+                f"{base_initiators_path}/update_group/initiators/mgmt",
+                "add iqn.example:client2",
+            ),
+            call(
+                f"{base_initiators_path}/update_group/initiators/mgmt",
+                "add iqn.example:client#3",
+            ),
             # new_group initiators
-            call(f"{base_initiators_path}/new_group/initiators/mgmt", "add iqn.example:client4")
+            call(
+                f"{base_initiators_path}/new_group/initiators/mgmt",
+                "add iqn.example:client4",
+            ),
         ]
-        mock_sysfs.write_sysfs.assert_has_calls(expected_initiator_calls, any_order=True)
+        mock_sysfs.write_sysfs.assert_has_calls(
+            expected_initiator_calls, any_order=True
+        )
 
         # Assert: Verify LUN assignments
         expected_lun_calls = [
@@ -1834,29 +2155,39 @@ class TestTargetWriter:
             call(f"{base_initiators_path}/update_group/luns/mgmt", "add disk1 0"),
             call(f"{base_initiators_path}/update_group/luns/mgmt", "add disk2 1"),
             # new_group LUNs
-            call(f"{base_initiators_path}/new_group/luns/mgmt", "add disk3 0")
+            call(f"{base_initiators_path}/new_group/luns/mgmt", "add disk3 0"),
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_lun_calls, any_order=True)
 
         # Assert: Verify debug logging
         mock_logger.debug.assert_any_call(
             "Group %s for %s/%s already exists with matching config, skipping",
-            "existing_group", "iscsi", "iqn.2023-01.example.com:test"
+            "existing_group",
+            "iscsi",
+            "iqn.2023-01.example.com:test",
         )
         mock_logger.debug.assert_any_call(
             "Group %s for %s/%s exists but config differs",
-            "update_group", "iscsi", "iqn.2023-01.example.com:test"
+            "update_group",
+            "iscsi",
+            "iqn.2023-01.example.com:test",
         )
-        mock_logger.debug.assert_any_call("Created group %s for %s/%s",
-                                          "update_group", "iscsi", "iqn.2023-01.example.com:test")
-        mock_logger.debug.assert_any_call("Created group %s for %s/%s",
-                                          "new_group", "iscsi", "iqn.2023-01.example.com:test")
+        mock_logger.debug.assert_any_call(
+            "Created group %s for %s/%s",
+            "update_group",
+            "iscsi",
+            "iqn.2023-01.example.com:test",
+        )
+        mock_logger.debug.assert_any_call(
+            "Created group %s for %s/%s",
+            "new_group",
+            "iscsi",
+            "iqn.2023-01.example.com:test",
+        )
 
-    def test_update_target_groups_comprehensive_workflow(self,
-                                                         target_writer,
-                                                         mock_sysfs,
-                                                         mock_config_reader,
-                                                         mock_logger):
+    def test_update_target_groups_comprehensive_workflow(
+        self, target_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test _update_target_groups with comprehensive group update workflow
 
@@ -1873,9 +2204,9 @@ class TestTargetWriter:
         target = "iqn.2023-01.example.com:test"
         target_config = Mock()
         target_config.groups = {
-            "match_group": Mock(),      # Exists with matching config, will be skipped
-            "update_group": Mock(),     # Exists but config differs, will be updated
-            "new_group": Mock()         # Doesn't exist, will be created
+            "match_group": Mock(),  # Exists with matching config, will be skipped
+            "update_group": Mock(),  # Exists but config differs, will be updated
+            "new_group": Mock(),  # Doesn't exist, will be created
         }
 
         # Configure Mock objects to have necessary attributes (to avoid iteration errors)
@@ -1886,13 +2217,18 @@ class TestTargetWriter:
 
         # Mock helper methods
         def mock_group_exists(driver, target, group_name):
-            return group_name in ["match_group", "update_group"]  # new_group doesn't exist
+            return group_name in [
+                "match_group",
+                "update_group",
+            ]  # new_group doesn't exist
 
         def mock_group_config_matches(driver, target, group_name, group_config):
             return group_name == "match_group"  # Only match_group matches
 
         target_writer._group_exists = Mock(side_effect=mock_group_exists)
-        target_writer._group_config_matches = Mock(side_effect=mock_group_config_matches)
+        target_writer._group_config_matches = Mock(
+            side_effect=mock_group_config_matches
+        )
         target_writer._update_group_config = Mock()
 
         # Configure successful sysfs writes
@@ -1905,17 +2241,21 @@ class TestTargetWriter:
         expected_exists_calls = [
             call(driver, target, "match_group"),
             call(driver, target, "update_group"),
-            call(driver, target, "new_group")
+            call(driver, target, "new_group"),
         ]
-        target_writer._group_exists.assert_has_calls(expected_exists_calls, any_order=True)
+        target_writer._group_exists.assert_has_calls(
+            expected_exists_calls, any_order=True
+        )
 
         # Assert: Verify config matching checks for existing groups
         expected_config_calls = [
             call(driver, target, "match_group", target_config.groups["match_group"]),
-            call(driver, target, "update_group", target_config.groups["update_group"])
+            call(driver, target, "update_group", target_config.groups["update_group"]),
             # new_group not checked because it doesn't exist
         ]
-        target_writer._group_config_matches.assert_has_calls(expected_config_calls, any_order=True)
+        target_writer._group_config_matches.assert_has_calls(
+            expected_config_calls, any_order=True
+        )
 
         # Assert: Verify group config update for differing group
         target_writer._update_group_config.assert_called_once_with(
@@ -1930,30 +2270,44 @@ class TestTargetWriter:
         expected_sysfs_calls = [
             call(mgmt_path, "create new_group"),
             call(initiators_mgmt_path, "add iqn.example:client1"),
-            call(luns_mgmt_path, "add disk1 0")
+            call(luns_mgmt_path, "add disk1 0"),
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_sysfs_calls, any_order=True)
 
         # Assert: Verify debug logging
         expected_debug_calls = [
-            call("Group %s for %s/%s already exists with matching config, skipping",
-                 "match_group", "iscsi", "iqn.2023-01.example.com:test"),
-            call("Group %s for %s/%s config differs, updating incrementally",
-                 "update_group", "iscsi", "iqn.2023-01.example.com:test"),
-            call("Group %s for %s/%s doesn't exist, creating",
-                 "new_group", "iscsi", "iqn.2023-01.example.com:test"),
-            call("Created group %s for %s/%s",
-                 "new_group", "iscsi", "iqn.2023-01.example.com:test"),
+            call(
+                "Group %s for %s/%s already exists with matching config, skipping",
+                "match_group",
+                "iscsi",
+                "iqn.2023-01.example.com:test",
+            ),
+            call(
+                "Group %s for %s/%s config differs, updating incrementally",
+                "update_group",
+                "iscsi",
+                "iqn.2023-01.example.com:test",
+            ),
+            call(
+                "Group %s for %s/%s doesn't exist, creating",
+                "new_group",
+                "iscsi",
+                "iqn.2023-01.example.com:test",
+            ),
+            call(
+                "Created group %s for %s/%s",
+                "new_group",
+                "iscsi",
+                "iqn.2023-01.example.com:test",
+            ),
             call("Added initiator %s to group %s", "iqn.example:client1", "new_group"),
-            call("Added LUN %s (%s) to group %s", "0", "disk1", "new_group")
+            call("Added LUN %s (%s) to group %s", "0", "disk1", "new_group"),
         ]
         mock_logger.debug.assert_has_calls(expected_debug_calls, any_order=True)
 
-    def test_update_group_config_comprehensive_workflow(self,
-                                                        target_writer,
-                                                        mock_sysfs,
-                                                        mock_config_reader,
-                                                        mock_logger):
+    def test_update_group_config_comprehensive_workflow(
+        self, target_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test _update_group_config with comprehensive group configuration workflow
 
@@ -1972,9 +2326,9 @@ class TestTargetWriter:
         group_name = "storage_clients"
         group_config = Mock()
         group_config.initiators = [
-            "iqn.example:client1",         # Existing, keep
-            "iqn.example:client\\#3",      # New, add (with escaping)
-            "iqn.example:client4"          # New, add
+            "iqn.example:client1",  # Existing, keep
+            "iqn.example:client\\#3",  # New, add (with escaping)
+            "iqn.example:client4",  # New, add
             # client2 exists in sysfs but not in config, should be removed
         ]
 
@@ -1988,7 +2342,11 @@ class TestTargetWriter:
 
         def mock_listdir(path):
             if path == initiators_path:
-                return ["iqn.example:client1", "iqn.example:client2", "mgmt"]  # Current initiators
+                return [
+                    "iqn.example:client1",
+                    "iqn.example:client2",
+                    "mgmt",
+                ]  # Current initiators
             return []
 
         def mock_isfile(path):
@@ -2002,11 +2360,12 @@ class TestTargetWriter:
         # Configure successful mgmt operations
         mock_sysfs.mgmt_operation.return_value = None
 
-        with patch('os.path.exists', side_effect=mock_exists), \
-             patch('os.listdir', side_effect=mock_listdir), \
-             patch('os.path.isfile', side_effect=mock_isfile), \
-             patch('os.path.join', side_effect=lambda *args: '/'.join(args)):
-
+        with (
+            patch("os.path.exists", side_effect=mock_exists),
+            patch("os.listdir", side_effect=mock_listdir),
+            patch("os.path.isfile", side_effect=mock_isfile),
+            patch("os.path.join", side_effect=lambda *args: "/".join(args)),
+        ):
             # Act: Call the method under test
             target_writer._update_group_config(driver, target, group_name, group_config)
 
@@ -2017,22 +2376,36 @@ class TestTargetWriter:
 
         # Assert: Verify initiator additions (missing initiators)
         expected_add_calls = [
-            call(initiators_mgmt_path, "add", "iqn.example:client#3",  # Escaping removed: \\# -> #
-                 "Added initiator iqn.example:client#3 to group storage_clients",
-                 "Failed to add initiator iqn.example:client#3 to group storage_clients"),
-            call(initiators_mgmt_path, "add", "iqn.example:client4",
-                 "Added initiator iqn.example:client4 to group storage_clients",
-                 "Failed to add initiator iqn.example:client4 to group storage_clients")
+            call(
+                initiators_mgmt_path,
+                "add",
+                "iqn.example:client#3",  # Escaping removed: \\# -> #
+                "Added initiator iqn.example:client#3 to group storage_clients",
+                "Failed to add initiator iqn.example:client#3 to group storage_clients",
+            ),
+            call(
+                initiators_mgmt_path,
+                "add",
+                "iqn.example:client4",
+                "Added initiator iqn.example:client4 to group storage_clients",
+                "Failed to add initiator iqn.example:client4 to group storage_clients",
+            ),
         ]
         mock_sysfs.mgmt_operation.assert_has_calls(expected_add_calls, any_order=True)
 
         # Assert: Verify initiator removal (obsolete initiators)
         expected_remove_calls = [
-            call(initiators_mgmt_path, "del", "iqn.example:client2",  # client2 not in desired config
-                 "Removed initiator iqn.example:client2 from group storage_clients",
-                 "Failed to remove initiator iqn.example:client2 from group storage_clients")
+            call(
+                initiators_mgmt_path,
+                "del",
+                "iqn.example:client2",  # client2 not in desired config
+                "Removed initiator iqn.example:client2 from group storage_clients",
+                "Failed to remove initiator iqn.example:client2 from group storage_clients",
+            )
         ]
-        mock_sysfs.mgmt_operation.assert_has_calls(expected_remove_calls, any_order=True)
+        mock_sysfs.mgmt_operation.assert_has_calls(
+            expected_remove_calls, any_order=True
+        )
 
         # Assert: Verify LUN assignment update delegation
         target_writer._update_group_lun_assignments.assert_called_once_with(
@@ -2040,7 +2413,9 @@ class TestTargetWriter:
         )
 
         # Assert: Verify debug logging for method entry
-        mock_logger.debug.assert_any_call("Updating group %s configuration incrementally", "storage_clients")
+        mock_logger.debug.assert_any_call(
+            "Updating group %s configuration incrementally", "storage_clients"
+        )
 
 
 class TestGroupWriter:
@@ -2087,7 +2462,7 @@ class TestGroupWriter:
         group_name = "dg1"
 
         # Mock filesystem operation to return True (group exists)
-        with patch('os.path.exists', return_value=True) as mock_exists:
+        with patch("os.path.exists", return_value=True) as mock_exists:
             # Act: Call the method under test
             result = group_writer._device_group_exists(group_name)
 
@@ -2110,7 +2485,7 @@ class TestGroupWriter:
         group_name = "nonexistent_group"
 
         # Mock filesystem operation to return False (group doesn't exist)
-        with patch('os.path.exists', return_value=False) as mock_exists:
+        with patch("os.path.exists", return_value=False) as mock_exists:
             # Act: Call the method under test
             result = group_writer._device_group_exists(group_name)
 
@@ -2120,7 +2495,9 @@ class TestGroupWriter:
                 "/sys/kernel/scst_tgt/device_groups/nonexistent_group"
             )
 
-    def test_remove_device_group_complete_cleanup(self, group_writer, mock_sysfs, mock_logger):
+    def test_remove_device_group_complete_cleanup(
+        self, group_writer, mock_sysfs, mock_logger
+    ):
         """
         Test successful device group removal with complete cleanup sequence
 
@@ -2138,7 +2515,7 @@ class TestGroupWriter:
         mock_sysfs.valid_path.side_effect = lambda path: True  # All paths exist
         mock_sysfs.list_directory.side_effect = [
             ["tg1", "tg2", "mgmt"],  # Target groups with mgmt interface
-            ["disk1", "disk2", "mgmt"]  # Devices with mgmt interface
+            ["disk1", "disk2", "mgmt"],  # Devices with mgmt interface
         ]
         mock_sysfs.write_sysfs.return_value = None
 
@@ -2148,32 +2525,38 @@ class TestGroupWriter:
         # Assert: Verify sysfs path validations
         expected_valid_path_calls = [
             call("/sys/kernel/scst_tgt/device_groups/dg1/target_groups"),
-            call("/sys/kernel/scst_tgt/device_groups/dg1/devices")
+            call("/sys/kernel/scst_tgt/device_groups/dg1/devices"),
         ]
         mock_sysfs.valid_path.assert_has_calls(expected_valid_path_calls)
 
         # Assert: Verify directory listings
         expected_list_calls = [
             call("/sys/kernel/scst_tgt/device_groups/dg1/target_groups"),
-            call("/sys/kernel/scst_tgt/device_groups/dg1/devices")
+            call("/sys/kernel/scst_tgt/device_groups/dg1/devices"),
         ]
         mock_sysfs.list_directory.assert_has_calls(expected_list_calls)
 
         # Assert: Verify cleanup operations were performed in correct sequence
         expected_write_calls = [
             # Remove target groups
-            call("/sys/kernel/scst_tgt/device_groups/dg1/target_groups/mgmt", "del tg1"),
-            call("/sys/kernel/scst_tgt/device_groups/dg1/target_groups/mgmt", "del tg2"),
+            call(
+                "/sys/kernel/scst_tgt/device_groups/dg1/target_groups/mgmt", "del tg1"
+            ),
+            call(
+                "/sys/kernel/scst_tgt/device_groups/dg1/target_groups/mgmt", "del tg2"
+            ),
             # Remove devices
             call("/sys/kernel/scst_tgt/device_groups/dg1/devices/mgmt", "del disk1"),
             call("/sys/kernel/scst_tgt/device_groups/dg1/devices/mgmt", "del disk2"),
             # Remove device group itself
-            call("/sys/kernel/scst_tgt/device_groups/mgmt", "del dg1")
+            call("/sys/kernel/scst_tgt/device_groups/mgmt", "del dg1"),
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_write_calls)
         assert mock_sysfs.write_sysfs.call_count == 5
 
-    def test_remove_device_group_minimal_group(self, group_writer, mock_sysfs, mock_logger):
+    def test_remove_device_group_minimal_group(
+        self, group_writer, mock_sysfs, mock_logger
+    ):
         """
         Test removal of minimal device group with no target groups or devices
 
@@ -2196,20 +2579,21 @@ class TestGroupWriter:
         # Assert: Verify path validation attempts
         expected_valid_path_calls = [
             call("/sys/kernel/scst_tgt/device_groups/empty_group/target_groups"),
-            call("/sys/kernel/scst_tgt/device_groups/empty_group/devices")
+            call("/sys/kernel/scst_tgt/device_groups/empty_group/devices"),
         ]
         mock_sysfs.valid_path.assert_has_calls(expected_valid_path_calls)
 
         # Assert: Verify only group removal was performed (no target group/device cleanup)
         mock_sysfs.write_sysfs.assert_called_once_with(
-            "/sys/kernel/scst_tgt/device_groups/mgmt",
-            "del empty_group"
+            "/sys/kernel/scst_tgt/device_groups/mgmt", "del empty_group"
         )
 
         # Assert: Verify no directory listing (paths don't exist)
         mock_sysfs.list_directory.assert_not_called()
 
-    def test_remove_device_group_partial_components(self, group_writer, mock_sysfs, mock_logger):
+    def test_remove_device_group_partial_components(
+        self, group_writer, mock_sysfs, mock_logger
+    ):
         """
         Test device group removal when only some components exist
 
@@ -2236,7 +2620,7 @@ class TestGroupWriter:
         # Assert: Verify both path validations were attempted
         expected_valid_path_calls = [
             call("/sys/kernel/scst_tgt/device_groups/partial_group/target_groups"),
-            call("/sys/kernel/scst_tgt/device_groups/partial_group/devices")
+            call("/sys/kernel/scst_tgt/device_groups/partial_group/devices"),
         ]
         mock_sysfs.valid_path.assert_has_calls(expected_valid_path_calls)
 
@@ -2248,14 +2632,19 @@ class TestGroupWriter:
         # Assert: Verify operations for existing components only
         expected_write_calls = [
             # Remove target group (devices section skipped)
-            call("/sys/kernel/scst_tgt/device_groups/partial_group/target_groups/mgmt", "del tg1"),
+            call(
+                "/sys/kernel/scst_tgt/device_groups/partial_group/target_groups/mgmt",
+                "del tg1",
+            ),
             # Remove device group itself
-            call("/sys/kernel/scst_tgt/device_groups/mgmt", "del partial_group")
+            call("/sys/kernel/scst_tgt/device_groups/mgmt", "del partial_group"),
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_write_calls)
         assert mock_sysfs.write_sysfs.call_count == 2
 
-    def test_remove_device_group_sysfs_error_handling(self, group_writer, mock_sysfs, mock_logger):
+    def test_remove_device_group_sysfs_error_handling(
+        self, group_writer, mock_sysfs, mock_logger
+    ):
         """
         Test error handling when sysfs operations fail during group removal
 
@@ -2285,11 +2674,12 @@ class TestGroupWriter:
 
         # Assert: Verify removal was attempted
         mock_sysfs.write_sysfs.assert_called_once_with(
-            "/sys/kernel/scst_tgt/device_groups/mgmt",
-            "del error_group"
+            "/sys/kernel/scst_tgt/device_groups/mgmt", "del error_group"
         )
 
-    def test_remove_device_group_mgmt_interface_filtering(self, group_writer, mock_sysfs, mock_logger):
+    def test_remove_device_group_mgmt_interface_filtering(
+        self, group_writer, mock_sysfs, mock_logger
+    ):
         """
         Test that management interface entries are properly filtered out
 
@@ -2306,7 +2696,7 @@ class TestGroupWriter:
         mock_sysfs.valid_path.side_effect = lambda path: True
         mock_sysfs.list_directory.side_effect = [
             ["mgmt", "tg1", "mgmt", "tg2"],  # Target groups with multiple mgmt entries
-            ["disk1", "mgmt", "disk2", "mgmt"]  # Devices with multiple mgmt entries
+            ["disk1", "mgmt", "disk2", "mgmt"],  # Devices with multiple mgmt entries
         ]
         mock_sysfs.write_sysfs.return_value = None
 
@@ -2316,16 +2706,30 @@ class TestGroupWriter:
         # Assert: Verify mgmt interfaces were filtered out
         # Should only have operations for tg1, tg2, disk1, disk2 + final group removal
         expected_write_calls = [
-            call("/sys/kernel/scst_tgt/device_groups/mgmt_test_group/target_groups/mgmt", "del tg1"),
-            call("/sys/kernel/scst_tgt/device_groups/mgmt_test_group/target_groups/mgmt", "del tg2"),
-            call("/sys/kernel/scst_tgt/device_groups/mgmt_test_group/devices/mgmt", "del disk1"),
-            call("/sys/kernel/scst_tgt/device_groups/mgmt_test_group/devices/mgmt", "del disk2"),
-            call("/sys/kernel/scst_tgt/device_groups/mgmt", "del mgmt_test_group")
+            call(
+                "/sys/kernel/scst_tgt/device_groups/mgmt_test_group/target_groups/mgmt",
+                "del tg1",
+            ),
+            call(
+                "/sys/kernel/scst_tgt/device_groups/mgmt_test_group/target_groups/mgmt",
+                "del tg2",
+            ),
+            call(
+                "/sys/kernel/scst_tgt/device_groups/mgmt_test_group/devices/mgmt",
+                "del disk1",
+            ),
+            call(
+                "/sys/kernel/scst_tgt/device_groups/mgmt_test_group/devices/mgmt",
+                "del disk2",
+            ),
+            call("/sys/kernel/scst_tgt/device_groups/mgmt", "del mgmt_test_group"),
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_write_calls)
         assert mock_sysfs.write_sysfs.call_count == 5
 
-    def test_update_device_group_devices_add_and_remove(self, group_writer, mock_sysfs, mock_logger):
+    def test_update_device_group_devices_add_and_remove(
+        self, group_writer, mock_sysfs, mock_logger
+    ):
         """
         Test device group device membership updates with additions and removals
 
@@ -2347,13 +2751,17 @@ class TestGroupWriter:
         devices_path = "/sys/kernel/scst_tgt/device_groups/dg1/devices"
 
         # Mock os.path.exists and os.listdir for reading current devices
-        with patch('os.path.exists', return_value=True) as mock_exists, \
-             patch('os.listdir', return_value=["disk1", "disk2", "mgmt"]) as mock_listdir, \
-             patch('os.path.islink') as mock_islink:
-
+        with (
+            patch("os.path.exists", return_value=True) as mock_exists,
+            patch(
+                "os.listdir", return_value=["disk1", "disk2", "mgmt"]
+            ) as mock_listdir,
+            patch("os.path.islink") as mock_islink,
+        ):
             # Configure islink to return True for actual devices, False for mgmt
             def mock_islink_side_effect(path):
                 return "disk1" in path or "disk2" in path  # disk1, disk2 are symlinks
+
             mock_islink.side_effect = mock_islink_side_effect
 
             # Configure successful sysfs writes
@@ -2369,24 +2777,32 @@ class TestGroupWriter:
             # Assert: Verify islink checks for actual items (excluding mgmt)
             expected_islink_calls = [
                 call("/sys/kernel/scst_tgt/device_groups/dg1/devices/disk1"),
-                call("/sys/kernel/scst_tgt/device_groups/dg1/devices/disk2")
+                call("/sys/kernel/scst_tgt/device_groups/dg1/devices/disk2"),
             ]
             mock_islink.assert_has_calls(expected_islink_calls, any_order=True)
 
             # Assert: Verify device management operations
             expected_write_calls = [
                 # Remove disk2 (current but not desired)
-                call("/sys/kernel/scst_tgt/device_groups/dg1/devices/mgmt", "del disk2"),
+                call(
+                    "/sys/kernel/scst_tgt/device_groups/dg1/devices/mgmt", "del disk2"
+                ),
                 # Add disk3 (desired but not current)
-                call("/sys/kernel/scst_tgt/device_groups/dg1/devices/mgmt", "add disk3")
+                call(
+                    "/sys/kernel/scst_tgt/device_groups/dg1/devices/mgmt", "add disk3"
+                ),
             ]
-            mock_sysfs.write_sysfs.assert_has_calls(expected_write_calls, any_order=True)
+            mock_sysfs.write_sysfs.assert_has_calls(
+                expected_write_calls, any_order=True
+            )
             assert mock_sysfs.write_sysfs.call_count == 2
 
             # Assert: Verify debug logging
             assert mock_logger.debug.call_count >= 3  # Operation logs + summary
 
-    def test_update_device_group_devices_no_changes_needed(self, group_writer, mock_sysfs, mock_logger):
+    def test_update_device_group_devices_no_changes_needed(
+        self, group_writer, mock_sysfs, mock_logger
+    ):
         """
         Test device group update when no changes are needed
 
@@ -2403,10 +2819,11 @@ class TestGroupWriter:
         mock_group_config.devices = {"disk1": {}, "disk2": {}}  # Want disk1, disk2
 
         # Mock os operations to show current devices match desired
-        with patch('os.path.exists', return_value=True), \
-             patch('os.listdir', return_value=["disk1", "disk2", "mgmt"]), \
-             patch('os.path.islink', return_value=True):  # All devices are symlinks
-
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("os.listdir", return_value=["disk1", "disk2", "mgmt"]),
+            patch("os.path.islink", return_value=True),
+        ):  # All devices are symlinks
             # Act: Call the method under test
             group_writer._update_device_group_devices(group_name, mock_group_config)
 
@@ -2414,9 +2831,13 @@ class TestGroupWriter:
             mock_sysfs.write_sysfs.assert_not_called()
 
             # Assert: Verify debug log about no changes needed
-            mock_logger.debug.assert_called_with("Device group %s membership already correct", "dg1")
+            mock_logger.debug.assert_called_with(
+                "Device group %s membership already correct", "dg1"
+            )
 
-    def test_set_target_group_target_attributes_success(self, group_writer, mock_sysfs, mock_logger):
+    def test_set_target_group_target_attributes_success(
+        self, group_writer, mock_sysfs, mock_logger
+    ):
         """
         Test successful setting of target group target attributes
 
@@ -2435,13 +2856,15 @@ class TestGroupWriter:
         target_path = "/sys/kernel/scst_tgt/device_groups/dg1/target_groups/controller_A/iqn.2023-01.example.com:test"
 
         # Mock target path as directory and attribute operations
-        with patch('os.path.isdir', return_value=True) as mock_isdir, \
-             patch('os.path.exists') as mock_exists:
-
+        with (
+            patch("os.path.isdir", return_value=True) as mock_isdir,
+            patch("os.path.exists") as mock_exists,
+        ):
             # Configure attribute existence and current values
             def mock_exists_side_effect(path):
                 # rel_tgt_id exists with different value, preferred doesn't exist
                 return path.endswith("/rel_tgt_id")
+
             mock_exists.side_effect = mock_exists_side_effect
 
             # Configure current attribute value check
@@ -2450,7 +2873,8 @@ class TestGroupWriter:
 
             # Act: Call the method under test
             group_writer._set_target_group_target_attributes(
-                device_group, tgroup_name, target_name, target_config)
+                device_group, tgroup_name, target_name, target_config
+            )
 
             # Assert: Verify directory check
             mock_isdir.assert_called_once_with(target_path)
@@ -2458,22 +2882,28 @@ class TestGroupWriter:
             # Assert: Verify attribute file existence checks
             expected_exists_calls = [
                 call(f"{target_path}/rel_tgt_id"),
-                call(f"{target_path}/preferred")
+                call(f"{target_path}/preferred"),
             ]
             mock_exists.assert_has_calls(expected_exists_calls, any_order=True)
 
             # Assert: Verify current value read for existing attribute
-            mock_sysfs.read_sysfs_attribute.assert_called_once_with(f"{target_path}/rel_tgt_id")
+            mock_sysfs.read_sysfs_attribute.assert_called_once_with(
+                f"{target_path}/rel_tgt_id"
+            )
 
             # Assert: Verify attribute writes
             expected_write_calls = [
                 call(f"{target_path}/rel_tgt_id", "1", check_result=False),
-                call(f"{target_path}/preferred", "1", check_result=False)
+                call(f"{target_path}/preferred", "1", check_result=False),
             ]
-            mock_sysfs.write_sysfs.assert_has_calls(expected_write_calls, any_order=True)
+            mock_sysfs.write_sysfs.assert_has_calls(
+                expected_write_calls, any_order=True
+            )
             assert mock_sysfs.write_sysfs.call_count == 2
 
-    def test_set_target_group_target_attributes_symlink_skip(self, group_writer, mock_sysfs, mock_logger):
+    def test_set_target_group_target_attributes_symlink_skip(
+        self, group_writer, mock_sysfs, mock_logger
+    ):
         """
         Test that symlink targets are skipped with appropriate logging
 
@@ -2489,11 +2919,11 @@ class TestGroupWriter:
         target_config = {"rel_tgt_id": "1"}
 
         # Mock target path as NOT a directory (symlink)
-        with patch('os.path.isdir', return_value=False) as mock_isdir:
-
+        with patch("os.path.isdir", return_value=False) as mock_isdir:
             # Act: Call the method under test
             group_writer._set_target_group_target_attributes(
-                device_group, tgroup_name, target_name, target_config)
+                device_group, tgroup_name, target_name, target_config
+            )
 
             # Assert: Verify directory check was performed
             mock_isdir.assert_called_once()
@@ -2501,14 +2931,16 @@ class TestGroupWriter:
             # Assert: Verify debug log about symlink
             mock_logger.debug.assert_called_once_with(
                 "Target %s is symlink, cannot set attributes - SCST will handle this automatically",
-                "iqn.2023-01.example.com:test"
+                "iqn.2023-01.example.com:test",
             )
 
             # Assert: Verify no sysfs operations
             mock_sysfs.write_sysfs.assert_not_called()
             mock_sysfs.read_sysfs_attribute.assert_not_called()
 
-    def test_device_group_config_matches_true(self, group_writer, mock_sysfs, mock_config_reader):
+    def test_device_group_config_matches_true(
+        self, group_writer, mock_sysfs, mock_config_reader
+    ):
         """
         Test _device_group_config_matches when configuration matches current state
 
@@ -2523,23 +2955,24 @@ class TestGroupWriter:
         group_name = "storage_group"
         group_config = Mock()
         group_config.devices = {"disk1", "disk2"}
-        group_config.target_groups = {
-            "controller_A": Mock(),
-            "controller_B": Mock()
-        }
+        group_config.target_groups = {"controller_A": Mock(), "controller_B": Mock()}
 
         # Mock filesystem structure that matches the configuration
         def mock_exists(path):
             return path in [
                 "/sys/kernel/scst_tgt/device_groups/storage_group/devices",
-                "/sys/kernel/scst_tgt/device_groups/storage_group/target_groups"
+                "/sys/kernel/scst_tgt/device_groups/storage_group/target_groups",
             ]
 
         def mock_listdir(path):
             if "devices" in path:
                 return ["disk1", "disk2", "mgmt"]  # mgmt will be filtered out
             elif "target_groups" in path:
-                return ["controller_A", "controller_B", "mgmt"]  # mgmt will be filtered out
+                return [
+                    "controller_A",
+                    "controller_B",
+                    "mgmt",
+                ]  # mgmt will be filtered out
             return []
 
         def mock_isdir(path):
@@ -2549,10 +2982,11 @@ class TestGroupWriter:
         # Mock target group config matches to return True for both groups
         group_writer._target_group_config_matches = Mock(return_value=True)
 
-        with patch('os.path.exists', side_effect=mock_exists), \
-             patch('os.listdir', side_effect=mock_listdir), \
-             patch('os.path.isdir', side_effect=mock_isdir):
-
+        with (
+            patch("os.path.exists", side_effect=mock_exists),
+            patch("os.listdir", side_effect=mock_listdir),
+            patch("os.path.isdir", side_effect=mock_isdir),
+        ):
             # Act: Call the method under test
             result = group_writer._device_group_config_matches(group_name, group_config)
 
@@ -2561,12 +2995,22 @@ class TestGroupWriter:
 
         # Assert: Verify target group config checking was called for each target group
         expected_calls = [
-            call("storage_group", "controller_A", group_config.target_groups["controller_A"]),
-            call("storage_group", "controller_B", group_config.target_groups["controller_B"])
+            call(
+                "storage_group",
+                "controller_A",
+                group_config.target_groups["controller_A"],
+            ),
+            call(
+                "storage_group",
+                "controller_B",
+                group_config.target_groups["controller_B"],
+            ),
         ]
         group_writer._target_group_config_matches.assert_has_calls(expected_calls)
 
-    def test_target_group_config_matches_true(self, group_writer, mock_sysfs, mock_config_reader):
+    def test_target_group_config_matches_true(
+        self, group_writer, mock_sysfs, mock_config_reader
+    ):
         """
         Test _target_group_config_matches when ALUA target group configuration matches
 
@@ -2598,7 +3042,7 @@ class TestGroupWriter:
                 targets_path,
                 f"{targets_path}/group_id",
                 f"{targets_path}/state",
-                f"{targets_path}/iqn.example:test1/rel_tgt_id"
+                f"{targets_path}/iqn.example:test1/rel_tgt_id",
             ]
 
         def mock_listdir(path):
@@ -2611,7 +3055,9 @@ class TestGroupWriter:
             # - test1 is actual directory (has attributes)
             # - test2 is symlink to directory (no attributes but still valid)
             # Only mgmt should return False
-            return (path.endswith("/iqn.example:test1") or path.endswith("/iqn.example:test2"))
+            return path.endswith("/iqn.example:test1") or path.endswith(
+                "/iqn.example:test2"
+            )
 
         # Mock sysfs attribute reads
         def mock_read_sysfs_attribute(path):
@@ -2625,12 +3071,15 @@ class TestGroupWriter:
 
         mock_sysfs.read_sysfs_attribute.side_effect = mock_read_sysfs_attribute
 
-        with patch('os.path.exists', side_effect=mock_exists), \
-             patch('os.listdir', side_effect=mock_listdir), \
-             patch('os.path.isdir', side_effect=mock_isdir):
-
+        with (
+            patch("os.path.exists", side_effect=mock_exists),
+            patch("os.listdir", side_effect=mock_listdir),
+            patch("os.path.isdir", side_effect=mock_isdir),
+        ):
             # Act: Call the method under test
-            result = group_writer._target_group_config_matches(device_group, target_group, tgroup_config)
+            result = group_writer._target_group_config_matches(
+                device_group, target_group, tgroup_config
+            )
 
         # Assert: Verify method returns True for matching configuration
         assert result is True
@@ -2639,11 +3088,15 @@ class TestGroupWriter:
         expected_read_calls = [
             call(f"{targets_path}/group_id"),
             call(f"{targets_path}/state"),
-            call(f"{targets_path}/iqn.example:test1/rel_tgt_id")
+            call(f"{targets_path}/iqn.example:test1/rel_tgt_id"),
         ]
-        mock_sysfs.read_sysfs_attribute.assert_has_calls(expected_read_calls, any_order=True)
+        mock_sysfs.read_sysfs_attribute.assert_has_calls(
+            expected_read_calls, any_order=True
+        )
 
-    def test_update_device_group_incremental_updates(self, group_writer, mock_sysfs, mock_config_reader, mock_logger):
+    def test_update_device_group_incremental_updates(
+        self, group_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test _update_device_group performs incremental updates correctly
 
@@ -2657,10 +3110,7 @@ class TestGroupWriter:
         # Arrange: Set up test data
         group_name = "storage_group"
         group_config = Mock()
-        group_config.attributes = {
-            "some_attr": "value1",
-            "another_attr": "value2"
-        }
+        group_config.attributes = {"some_attr": "value1", "another_attr": "value2"}
 
         # Mock the delegated methods
         group_writer._update_device_group_devices = Mock()
@@ -2673,35 +3123,51 @@ class TestGroupWriter:
         group_writer._update_device_group(group_name, group_config)
 
         # Assert: Verify delegation to device update method
-        group_writer._update_device_group_devices.assert_called_once_with(group_name, group_config)
+        group_writer._update_device_group_devices.assert_called_once_with(
+            group_name, group_config
+        )
 
         # Assert: Verify delegation to target group update method
         group_writer._update_device_group_target_groups.assert_called_once_with(
-            group_name, group_config)
+            group_name, group_config
+        )
 
         # Assert: Verify group attribute updates
         expected_write_calls = [
-            call("/sys/kernel/scst_tgt/device_groups/storage_group/some_attr",
-                 "value1", check_result=False),
-            call("/sys/kernel/scst_tgt/device_groups/storage_group/another_attr",
-                 "value2", check_result=False)
+            call(
+                "/sys/kernel/scst_tgt/device_groups/storage_group/some_attr",
+                "value1",
+                check_result=False,
+            ),
+            call(
+                "/sys/kernel/scst_tgt/device_groups/storage_group/another_attr",
+                "value2",
+                check_result=False,
+            ),
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_write_calls, any_order=True)
         assert mock_sysfs.write_sysfs.call_count == 2
 
         # Assert: Verify debug logging
-        mock_logger.debug.assert_any_call("Updating device group %s configuration incrementally",
-                                          "storage_group")
-        mock_logger.debug.assert_any_call("Updated device group attribute %s.%s = %s",
-                                          "storage_group", "some_attr", "value1")
-        mock_logger.debug.assert_any_call("Updated device group attribute %s.%s = %s",
-                                          "storage_group", "another_attr", "value2")
+        mock_logger.debug.assert_any_call(
+            "Updating device group %s configuration incrementally", "storage_group"
+        )
+        mock_logger.debug.assert_any_call(
+            "Updated device group attribute %s.%s = %s",
+            "storage_group",
+            "some_attr",
+            "value1",
+        )
+        mock_logger.debug.assert_any_call(
+            "Updated device group attribute %s.%s = %s",
+            "storage_group",
+            "another_attr",
+            "value2",
+        )
 
-    def test_update_device_group_target_groups_synchronization(self,
-                                                               group_writer,
-                                                               mock_sysfs,
-                                                               mock_config_reader,
-                                                               mock_logger):
+    def test_update_device_group_target_groups_synchronization(
+        self, group_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test _update_device_group_target_groups synchronizes target groups correctly
 
@@ -2718,11 +3184,13 @@ class TestGroupWriter:
         group_config = Mock()
         group_config.target_groups = {
             "controller_A": Mock(),  # Existing, needs update
-            "controller_C": Mock()   # New, needs creation
+            "controller_C": Mock(),  # New, needs creation
             # controller_B exists but not in config, needs removal
         }
 
-        target_groups_path = "/sys/kernel/scst_tgt/device_groups/storage_group/target_groups"
+        target_groups_path = (
+            "/sys/kernel/scst_tgt/device_groups/storage_group/target_groups"
+        )
 
         # Mock filesystem operations showing current state
         def mock_exists(path):
@@ -2744,10 +3212,11 @@ class TestGroupWriter:
         # Configure successful sysfs writes
         mock_sysfs.write_sysfs.return_value = None
 
-        with patch('os.path.exists', side_effect=mock_exists), \
-             patch('os.listdir', side_effect=mock_listdir), \
-             patch('os.path.isdir', side_effect=mock_isdir):
-
+        with (
+            patch("os.path.exists", side_effect=mock_exists),
+            patch("os.listdir", side_effect=mock_listdir),
+            patch("os.path.isdir", side_effect=mock_isdir),
+        ):
             # Act: Call the method under test
             group_writer._update_device_group_target_groups(group_name, group_config)
 
@@ -2767,20 +3236,28 @@ class TestGroupWriter:
         )
 
         # Assert: Verify debug logging
-        mock_logger.debug.assert_any_call("Updating target groups for device group %s",
-                                          "storage_group")
-        mock_logger.debug.assert_any_call("Removed target group %s from device group %s",
-                                          "controller_B", "storage_group")
-        mock_logger.debug.assert_any_call("Creating target group %s in device group %s",
-                                          "controller_C", "storage_group")
-        mock_logger.debug.assert_any_call("Updating target group %s in device group %s",
-                                          "controller_A", "storage_group")
+        mock_logger.debug.assert_any_call(
+            "Updating target groups for device group %s", "storage_group"
+        )
+        mock_logger.debug.assert_any_call(
+            "Removed target group %s from device group %s",
+            "controller_B",
+            "storage_group",
+        )
+        mock_logger.debug.assert_any_call(
+            "Creating target group %s in device group %s",
+            "controller_C",
+            "storage_group",
+        )
+        mock_logger.debug.assert_any_call(
+            "Updating target group %s in device group %s",
+            "controller_A",
+            "storage_group",
+        )
 
-    def test_update_target_group_attributes_with_value_checking(self,
-                                                                group_writer,
-                                                                mock_sysfs,
-                                                                mock_config_reader,
-                                                                mock_logger):
+    def test_update_target_group_attributes_with_value_checking(
+        self, group_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test _update_target_group_attributes updates attributes with current value checking
 
@@ -2797,9 +3274,9 @@ class TestGroupWriter:
         tgroup_name = "controller_A"
         tgroup_config = Mock()
         tgroup_config.attributes = {
-            "group_id": "101",   # Current value is "100", needs update
-            "state": "active",   # Current value is "active", no update needed
-            "new_attr": "value"  # Attribute doesn't exist, needs creation
+            "group_id": "101",  # Current value is "100", needs update
+            "state": "active",  # Current value is "active", no update needed
+            "new_attr": "value",  # Attribute doesn't exist, needs creation
         }
 
         base_path = "/sys/kernel/scst_tgt/device_groups/storage_group/target_groups/controller_A"
@@ -2823,10 +3300,11 @@ class TestGroupWriter:
         mock_sysfs.read_sysfs_attribute.side_effect = mock_read_sysfs_attribute
         mock_sysfs.write_sysfs.return_value = None
 
-        with patch('os.path.exists', side_effect=mock_exists):
-
+        with patch("os.path.exists", side_effect=mock_exists):
             # Act: Call the method under test
-            group_writer._update_target_group_attributes(device_group, tgroup_name, tgroup_config)
+            group_writer._update_target_group_attributes(
+                device_group, tgroup_name, tgroup_config
+            )
 
         # Assert: Verify target assignments updated first
         group_writer._update_target_group_targets.assert_called_once_with(
@@ -2836,14 +3314,16 @@ class TestGroupWriter:
         # Assert: Verify attribute reads for existing attributes
         expected_read_calls = [
             call(f"{base_path}/group_id"),
-            call(f"{base_path}/state")
+            call(f"{base_path}/state"),
         ]
-        mock_sysfs.read_sysfs_attribute.assert_has_calls(expected_read_calls, any_order=True)
+        mock_sysfs.read_sysfs_attribute.assert_has_calls(
+            expected_read_calls, any_order=True
+        )
 
         # Assert: Verify only changed/new attributes are written
         expected_write_calls = [
             call(f"{base_path}/group_id", "101", check_result=False),  # Changed value
-            call(f"{base_path}/new_attr", "value", check_result=False)  # New attribute
+            call(f"{base_path}/new_attr", "value", check_result=False),  # New attribute
             # state is NOT written because current value matches desired
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_write_calls, any_order=True)
@@ -2852,22 +3332,30 @@ class TestGroupWriter:
         # Assert: Verify debug logging for value comparisons
         mock_logger.debug.assert_any_call(
             "Updated target group attribute %s.%s.%s: %s -> %s",
-            "storage_group", "controller_A", "group_id", "100", "101"
+            "storage_group",
+            "controller_A",
+            "group_id",
+            "100",
+            "101",
         )
         mock_logger.debug.assert_any_call(
             "Target group attribute %s.%s.%s already has correct value: %s",
-            "storage_group", "controller_A", "state", "active"
+            "storage_group",
+            "controller_A",
+            "state",
+            "active",
         )
         mock_logger.debug.assert_any_call(
             "Set target group attribute %s.%s.%s = %s",
-            "storage_group", "controller_A", "new_attr", "value"
+            "storage_group",
+            "controller_A",
+            "new_attr",
+            "value",
         )
 
-    def test_update_target_group_targets_with_alua_attributes(self,
-                                                              group_writer,
-                                                              mock_sysfs,
-                                                              mock_config_reader,
-                                                              mock_logger):
+    def test_update_target_group_targets_with_alua_attributes(
+        self, group_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test _update_target_group_targets manages target membership and ALUA attributes
 
@@ -2883,10 +3371,13 @@ class TestGroupWriter:
         device_group = "storage_group"
         tgroup_name = "controller_A"
         tgroup_config = Mock()
-        tgroup_config.targets = {"iqn.example:test1", "iqn.example:test3"}  # want test1, test3
+        tgroup_config.targets = {
+            "iqn.example:test1",
+            "iqn.example:test3",
+        }  # want test1, test3
         tgroup_config.target_attributes = {
             "iqn.example:test1": {"rel_tgt_id": "1"},
-            "iqn.example:test3": {"rel_tgt_id": "3"}
+            "iqn.example:test3": {"rel_tgt_id": "3"},
         }
 
         tgroup_path = "/sys/kernel/scst_tgt/device_groups/storage_group/target_groups/controller_A"
@@ -2897,7 +3388,11 @@ class TestGroupWriter:
 
         def mock_listdir(path):
             if path == tgroup_path:
-                return ["iqn.example:test1", "iqn.example:test2", "mgmt"]  # current: test1, test2
+                return [
+                    "iqn.example:test1",
+                    "iqn.example:test2",
+                    "mgmt",
+                ]  # current: test1, test2
             return []
 
         # Mock sysfs helper methods
@@ -2912,29 +3407,42 @@ class TestGroupWriter:
         mock_sysfs.is_valid_sysfs_directory.side_effect = mock_is_valid_sysfs_directory
         mock_sysfs.mgmt_operation.return_value = None
 
-        with patch('os.path.exists', side_effect=mock_exists), \
-             patch('os.listdir', side_effect=mock_listdir):
-
+        with (
+            patch("os.path.exists", side_effect=mock_exists),
+            patch("os.listdir", side_effect=mock_listdir),
+        ):
             # Act: Call the method under test
-            group_writer._update_target_group_targets(device_group, tgroup_name, tgroup_config)
+            group_writer._update_target_group_targets(
+                device_group, tgroup_name, tgroup_config
+            )
 
         # Assert: Verify sysfs directory validation calls
         expected_is_valid_calls = [
             call(tgroup_path, "iqn.example:test1"),
-            call(tgroup_path, "iqn.example:test2")
+            call(tgroup_path, "iqn.example:test2"),
         ]
-        mock_sysfs.is_valid_sysfs_directory.assert_has_calls(expected_is_valid_calls, any_order=True)
+        mock_sysfs.is_valid_sysfs_directory.assert_has_calls(
+            expected_is_valid_calls, any_order=True
+        )
 
         # Assert: Verify mgmt operations for target membership changes
         expected_mgmt_calls = [
             # Add missing target (test3)
-            call(f"{tgroup_path}/mgmt", "add", "iqn.example:test3",
-                 "Added target iqn.example:test3 to target group storage_group/controller_A",
-                 "Failed to add target iqn.example:test3 to target group controller_A"),
+            call(
+                f"{tgroup_path}/mgmt",
+                "add",
+                "iqn.example:test3",
+                "Added target iqn.example:test3 to target group storage_group/controller_A",
+                "Failed to add target iqn.example:test3 to target group controller_A",
+            ),
             # Remove extra target (test2)
-            call(f"{tgroup_path}/mgmt", "del", "iqn.example:test2",
-                 "Removed target iqn.example:test2 from target group storage_group/controller_A",
-                 "Failed to remove target iqn.example:test2 from target group controller_A")
+            call(
+                f"{tgroup_path}/mgmt",
+                "del",
+                "iqn.example:test2",
+                "Removed target iqn.example:test2 from target group storage_group/controller_A",
+                "Failed to remove target iqn.example:test2 from target group controller_A",
+            ),
         ]
         mock_sysfs.mgmt_operation.assert_has_calls(expected_mgmt_calls, any_order=True)
         assert mock_sysfs.mgmt_operation.call_count == 2
@@ -2942,15 +3450,15 @@ class TestGroupWriter:
         # Assert: Verify target attributes are set for all configured targets
         expected_attr_calls = [
             call(device_group, tgroup_name, "iqn.example:test1", {"rel_tgt_id": "1"}),
-            call(device_group, tgroup_name, "iqn.example:test3", {"rel_tgt_id": "3"})
+            call(device_group, tgroup_name, "iqn.example:test3", {"rel_tgt_id": "3"}),
         ]
-        group_writer._set_target_group_target_attributes.assert_has_calls(expected_attr_calls, any_order=True)
+        group_writer._set_target_group_target_attributes.assert_has_calls(
+            expected_attr_calls, any_order=True
+        )
 
-    def test_create_target_group_full_alua_configuration(self,
-                                                         group_writer,
-                                                         mock_sysfs,
-                                                         mock_config_reader,
-                                                         mock_logger):
+    def test_create_target_group_full_alua_configuration(
+        self, group_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test _create_target_group creates target group with complete ALUA configuration
 
@@ -2973,7 +3481,9 @@ class TestGroupWriter:
         }
         tgroup_config.attributes = {"group_id": "101", "state": "active"}
 
-        tgroup_mgmt = "/sys/kernel/scst_tgt/device_groups/storage_group/target_groups/mgmt"
+        tgroup_mgmt = (
+            "/sys/kernel/scst_tgt/device_groups/storage_group/target_groups/mgmt"
+        )
         target_mgmt = "/sys/kernel/scst_tgt/device_groups/storage_group/target_groups/controller_A/mgmt"
 
         # Mock helper methods
@@ -2992,7 +3502,7 @@ class TestGroupWriter:
         # Assert: Verify all targets are added to target group
         expected_target_adds = [
             call(target_mgmt, "add iqn.example:test1"),
-            call(target_mgmt, "add iqn.example:test2")
+            call(target_mgmt, "add iqn.example:test2"),
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_target_adds, any_order=True)
 
@@ -3008,7 +3518,9 @@ class TestGroupWriter:
 
         # Assert: Verify debug logging
         mock_logger.debug.assert_any_call(
-            "Created target group %s in device group %s", "controller_A", "storage_group"
+            "Created target group %s in device group %s",
+            "controller_A",
+            "storage_group",
         )
         mock_logger.debug.assert_any_call(
             "Added target %s to target group %s", "iqn.example:test1", "controller_A"
@@ -3017,11 +3529,9 @@ class TestGroupWriter:
             "Added target %s to target group %s", "iqn.example:test2", "controller_A"
         )
 
-    def test_apply_target_groups_create_and_update_logic(self,
-                                                         group_writer,
-                                                         mock_sysfs,
-                                                         mock_config_reader,
-                                                         mock_logger):
+    def test_apply_target_groups_create_and_update_logic(
+        self, group_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test _apply_target_groups applies target group configurations with create/update logic
 
@@ -3036,7 +3546,7 @@ class TestGroupWriter:
         device_group = "storage_group"
         target_groups = {
             "controller_A": Mock(),  # Exists, will be updated
-            "controller_C": Mock()   # Doesn't exist, will be created
+            "controller_C": Mock(),  # Doesn't exist, will be created
         }
 
         # Mock filesystem operations
@@ -3049,17 +3559,20 @@ class TestGroupWriter:
         group_writer._update_target_group_attributes = Mock()
         group_writer._create_target_group = Mock()
 
-        with patch('os.path.exists', side_effect=mock_exists):
-
+        with patch("os.path.exists", side_effect=mock_exists):
             # Act: Call the method under test
             group_writer._apply_target_groups(device_group, target_groups)
 
         # Assert: Verify existence checks for all target groups
         expected_exists_calls = [
-            call("/sys/kernel/scst_tgt/device_groups/storage_group/target_groups/controller_A"),
-            call("/sys/kernel/scst_tgt/device_groups/storage_group/target_groups/controller_C")
+            call(
+                "/sys/kernel/scst_tgt/device_groups/storage_group/target_groups/controller_A"
+            ),
+            call(
+                "/sys/kernel/scst_tgt/device_groups/storage_group/target_groups/controller_C"
+            ),
         ]
-        with patch('os.path.exists', side_effect=mock_exists) as mock_exists_patch:
+        with patch("os.path.exists", side_effect=mock_exists) as mock_exists_patch:
             # Re-run to capture the calls
             group_writer._apply_target_groups(device_group, target_groups)
             mock_exists_patch.assert_has_calls(expected_exists_calls, any_order=True)
@@ -3078,19 +3591,26 @@ class TestGroupWriter:
         )
 
         # Assert: Verify debug logging
-        mock_logger.debug.assert_any_call("Processing target group '%s' in device group '%s'",
-                                          "controller_A", "storage_group")
-        mock_logger.debug.assert_any_call("Target group %s exists, updating configuration",
-                                          "controller_A")
-        mock_logger.debug.assert_any_call("Processing target group '%s' in device group '%s'",
-                                          "controller_C", "storage_group")
-        mock_logger.debug.assert_any_call("Target group %s doesn't exist, creating", "controller_C")
+        mock_logger.debug.assert_any_call(
+            "Processing target group '%s' in device group '%s'",
+            "controller_A",
+            "storage_group",
+        )
+        mock_logger.debug.assert_any_call(
+            "Target group %s exists, updating configuration", "controller_A"
+        )
+        mock_logger.debug.assert_any_call(
+            "Processing target group '%s' in device group '%s'",
+            "controller_C",
+            "storage_group",
+        )
+        mock_logger.debug.assert_any_call(
+            "Target group %s doesn't exist, creating", "controller_C"
+        )
 
-    def test_apply_config_device_groups_comprehensive_workflow(self,
-                                                               group_writer,
-                                                               mock_sysfs,
-                                                               mock_config_reader,
-                                                               mock_logger):
+    def test_apply_config_device_groups_comprehensive_workflow(
+        self, group_writer, mock_sysfs, mock_config_reader, mock_logger
+    ):
         """
         Test apply_config_device_groups main entry point with comprehensive workflow
 
@@ -3107,7 +3627,7 @@ class TestGroupWriter:
         config = Mock()
         config.device_groups = {
             "existing_group": Mock(),  # Exists but config differs, will be updated
-            "new_group": Mock()        # Doesn't exist, will be created
+            "new_group": Mock(),  # Doesn't exist, will be created
         }
 
         # Configure existing group
@@ -3123,8 +3643,12 @@ class TestGroupWriter:
         new_group.target_groups = {"controller_B": Mock()}
 
         # Mock helper methods
-        group_writer._device_group_exists = Mock(side_effect=lambda name: name == "existing_group")
-        group_writer._device_group_config_matches = Mock(return_value=False)  # Config differs
+        group_writer._device_group_exists = Mock(
+            side_effect=lambda name: name == "existing_group"
+        )
+        group_writer._device_group_config_matches = Mock(
+            return_value=False
+        )  # Config differs
         group_writer._update_device_group = Mock()
         group_writer._apply_target_groups = Mock()
 
@@ -3137,10 +3661,14 @@ class TestGroupWriter:
         # Assert: Verify existence and config matching checks
         group_writer._device_group_exists.assert_any_call("existing_group")
         group_writer._device_group_exists.assert_any_call("new_group")
-        group_writer._device_group_config_matches.assert_called_once_with("existing_group", existing_group)
+        group_writer._device_group_config_matches.assert_called_once_with(
+            "existing_group", existing_group
+        )
 
         # Assert: Verify incremental update for existing group
-        group_writer._update_device_group.assert_called_once_with("existing_group", existing_group)
+        group_writer._update_device_group.assert_called_once_with(
+            "existing_group", existing_group
+        )
 
         # Assert: Verify creation of new group
         mock_sysfs.write_sysfs.assert_any_call(
@@ -3149,24 +3677,34 @@ class TestGroupWriter:
 
         # Assert: Verify group-level attributes are set
         expected_attr_calls = [
-            call("/sys/kernel/scst_tgt/device_groups/new_group/other_attr", "value2", check_result=False)
+            call(
+                "/sys/kernel/scst_tgt/device_groups/new_group/other_attr",
+                "value2",
+                check_result=False,
+            )
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_attr_calls, any_order=True)
 
         # Assert: Verify device membership management
         expected_device_calls = [
-            call("/sys/kernel/scst_tgt/device_groups/new_group/devices/mgmt", "add disk3")
+            call(
+                "/sys/kernel/scst_tgt/device_groups/new_group/devices/mgmt", "add disk3"
+            )
         ]
         mock_sysfs.write_sysfs.assert_has_calls(expected_device_calls, any_order=True)
 
         # Assert: Verify target group configuration delegation
-        expected_target_group_calls = [
-            call("new_group", new_group.target_groups)
-        ]
+        expected_target_group_calls = [call("new_group", new_group.target_groups)]
         group_writer._apply_target_groups.assert_has_calls(expected_target_group_calls)
 
         # Assert: Verify debug logging
-        mock_logger.debug.assert_any_call("Device group %s config differs, updating incrementally", "existing_group")
+        mock_logger.debug.assert_any_call(
+            "Device group %s config differs, updating incrementally", "existing_group"
+        )
         mock_logger.debug.assert_any_call("Created device group %s", "new_group")
-        mock_logger.debug.assert_any_call("Set device group attribute %s.%s = %s", "new_group", "other_attr", "value2")
-        mock_logger.debug.assert_any_call("Added device %s to device group %s", "disk3", "new_group")
+        mock_logger.debug.assert_any_call(
+            "Set device group attribute %s.%s = %s", "new_group", "other_attr", "value2"
+        )
+        mock_logger.debug.assert_any_call(
+            "Added device %s to device group %s", "disk3", "new_group"
+        )

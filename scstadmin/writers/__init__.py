@@ -11,8 +11,4 @@ from .device_writer import DeviceWriter
 from .target_writer import TargetWriter
 from .group_writer import GroupWriter
 
-__all__ = [
-    'DeviceWriter',
-    'TargetWriter',
-    'GroupWriter'
-]
+__all__ = ["DeviceWriter", "TargetWriter", "GroupWriter"]
