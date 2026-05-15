@@ -411,7 +411,7 @@ class SCSTAdmin:
                 handler_mgmt = f"{handler_path}/mgmt"
                 for device in self.sysfs.list_directory(handler_path):
                     # Skip handler attributes - only remove actual devices
-                    if device not in self.sysfs.HANDLER_SYSTEM_ATTRS:
+                    if not self.sysfs.is_handler_system_attr(device, handler):
                         try:
                             self.sysfs.write_sysfs(handler_mgmt, f"del_device {device}")
                         except SCSTError:
