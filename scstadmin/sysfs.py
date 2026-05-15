@@ -56,6 +56,7 @@ class SCSTSysfs:
     MGMT_INTERFACE = "mgmt"
     ENABLED_ATTR = "enabled"
     HANDLER_SYSTEM_ATTRS = {"mgmt", "type", "trace_level"}
+    PER_HANDLER_SYSTEM_ATTRS = {"dev_disk": {"pr_dump_dir"}}
 
     def __init__(self, timeout: int = SCSTConstants.DEFAULT_TIMEOUT):
         self.timeout = timeout
@@ -199,6 +200,16 @@ class SCSTSysfs:
             return [f for f in os.listdir(path) if not f.startswith(".")]
         except OSError:
             return []
+
+    def is_handler_system_attr(
+        self, attr_name: str, handler_name: str | None = None
+    ) -> bool:
+        """Check if an item represents a handler system attr."""
+        if attr_name in self.HANDLER_SYSTEM_ATTRS:
+            return True
+        if handler_name:
+            return attr_name in self.PER_HANDLER_SYSTEM_ATTRS.get(handler_name, {})
+        return False
 
     def is_valid_sysfs_directory(
         self, base_path: str, item_name: str, exclude_mgmt: bool = True
