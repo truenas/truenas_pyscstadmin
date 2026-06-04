@@ -80,12 +80,12 @@ class VdiskFileioDeviceConfig(DeviceConfig):
         thin_provisioned: Thin provisioning flag (0/1, default: 0)
     """
 
-    # Creation-time parameters from /sys/kernel/scst_tgt/handlers/vdisk_fileio/mgmt
+    # Creation-time parameters from /sys/kernel/scst_tgt/handlers/vdisk_fileio/mgmt.
+    # cluster_mode is intentionally omitted; middleware writes it directly via sysfs.
     _CREATION_PARAMS = {
         "active",
         "async",
         "blocksize",
-        "cluster_mode",
         "dif_filename",
         "dif_mode",
         "dif_static_app_tag",
@@ -202,12 +202,12 @@ class VdiskBlockioDeviceConfig(DeviceConfig):
         thin_provisioned: Thin provisioning flag (0/1, default: 0)
     """
 
-    # Creation-time parameters from /sys/kernel/scst_tgt/handlers/vdisk_blockio/mgmt
+    # Creation-time parameters from /sys/kernel/scst_tgt/handlers/vdisk_blockio/mgmt.
+    # cluster_mode is intentionally omitted; middleware writes it directly via sysfs.
     _CREATION_PARAMS = {
         "active",
         "bind_alua_state",
         "blocksize",
-        "cluster_mode",
         "dif_filename",
         "dif_mode",
         "dif_static_app_tag",
