@@ -414,10 +414,9 @@ class TestDeviceWriter:
 
         This test verifies the complete device creation workflow:
         1. Creation parameters are properly formatted in add_device command
-        2. cluster_mode parameter is placed at the end of the command
-        3. Device creation command is sent to handler management interface
-        4. Post-creation attributes are set via set_device_attributes method
-        5. Proper parameter separation and formatting
+        2. Device creation command is sent to handler management interface
+        3. Post-creation attributes are set via set_device_attributes method
+        4. Proper parameter separation and formatting
         """
         # Arrange: Set up test data
         handler = "vdisk_fileio"
@@ -425,7 +424,6 @@ class TestDeviceWriter:
         creation_params = {
             "filename": "/tmp/test.img",
             "size_mb": "1024",
-            "cluster_mode": "1",  # Should be placed at end
             "t10_dev_id": "test_disk_id",
         }
         post_creation_attrs = {"readonly": "0", "rotational": "1"}
@@ -457,10 +455,10 @@ class TestDeviceWriter:
         expected_handler_path = "/sys/kernel/scst_tgt/handlers/vdisk_fileio/mgmt"
         assert creation_call[0][0] == expected_handler_path
 
-        # Verify command structure - should be "add_device test_disk param1=value1;param2=value2;cluster_mode=1;"
+        # Verify command structure - should be "add_device test_disk param1=value1;param2=value2;"
         command = creation_call[0][1]
         assert command.startswith("add_device test_disk ")
-        assert command.endswith("cluster_mode=1;")
+        assert command.endswith(";")
         assert "filename=/tmp/test.img" in command
         assert "size_mb=1024" in command
         assert "t10_dev_id=test_disk_id" in command
@@ -548,54 +546,6 @@ class TestDeviceWriter:
         assert "filename=/dev/sdb" in command
         assert "blocksize=4096" in command
 
-    def test_create_device_cluster_mode_ordering(self, device_writer, mock_sysfs):
-        """
-        Test that cluster_mode parameter is correctly placed at the end of creation command
-
-        This test specifically verifies the special handling for cluster_mode parameter
-        which must be placed after t10_dev_id for proper SCST operation.
-
-        This test verifies that:
-        1. cluster_mode is extracted from creation_params during processing
-        2. cluster_mode is appended at the end of the parameter list
-        3. Other parameters maintain their relative ordering
-        """
-        # Arrange: Set up test data with cluster_mode mixed in
-        handler = "vdisk_fileio"
-        device_name = "cluster_disk"
-        creation_params = {
-            "filename": "/shared/disk.img",
-            "cluster_mode": "1",  # This should move to the end
-            "t10_dev_id": "shared_disk_id",
-            "size_mb": "2048",
-        }
-        post_creation_attrs = {}
-
-        # Configure mocks
-        mock_sysfs.write_sysfs.return_value = None
-
-        # Act: Call the method under test
-        device_writer.create_device(
-            handler, device_name, creation_params, post_creation_attrs
-        )
-
-        # Assert: Verify cluster_mode appears at the end
-        call_args = mock_sysfs.write_sysfs.call_args
-        command = call_args[0][1]
-
-        # Split the command to analyze parameter ordering
-        # Expected format: "add_device cluster_disk param1=value1;param2=value2;cluster_mode=1;"
-        assert command.startswith("add_device cluster_disk ")
-        params_part = command[len("add_device cluster_disk ") :]
-
-        # cluster_mode should be the last parameter before the final semicolon
-        assert params_part.endswith("cluster_mode=1;")
-
-        # All other parameters should be present
-        assert "filename=/shared/disk.img" in command
-        assert "t10_dev_id=shared_disk_id" in command
-        assert "size_mb=2048" in command
-
     def test_determine_device_action_skip_matching_config(
         self, device_writer, mock_sysfs, mock_config_reader
     ):
@@ -616,7 +566,6 @@ class TestDeviceWriter:
             "filename",
             "size_mb",
             "blocksize",
-            "cluster_mode",
         }
         creation_params = {"filename": "/dev/sda", "size_mb": "1024"}
         post_creation_attrs = {"read_only": "1", "rotational": "0"}
@@ -630,7 +579,7 @@ class TestDeviceWriter:
         }
         mock_config_reader._get_current_device_attrs.return_value = current_attrs
 
-        # Mock sysfs.read_sysfs to raise error for non-existent attributes (blocksize, cluster_mode)
+        # Mock sysfs.read_sysfs to raise error for non-existent attribute (blocksize)
         mock_sysfs.read_sysfs.side_effect = SCSTError("File not found")
 
         # Act: Call the method under test
@@ -647,7 +596,6 @@ class TestDeviceWriter:
             "filename",
             "size_mb",
             "blocksize",
-            "cluster_mode",
             "read_only",
             "rotational",
         }
@@ -675,7 +623,6 @@ class TestDeviceWriter:
             "filename",
             "size_mb",
             "blocksize",
-            "cluster_mode",
         }
         creation_params = {"filename": "/dev/sda", "size_mb": "2048"}  # size_mb differs
         post_creation_attrs = {"read_only": "1"}
@@ -688,7 +635,7 @@ class TestDeviceWriter:
         }
         mock_config_reader._get_current_device_attrs.return_value = current_attrs
 
-        # Mock sysfs.read_sysfs to raise error for non-existent attributes (blocksize, cluster_mode)
+        # Mock sysfs.read_sysfs to raise error for non-existent attribute (blocksize)
         mock_sysfs.read_sysfs.side_effect = SCSTError("File not found")
 
         # Act: Call the method under test
@@ -705,7 +652,6 @@ class TestDeviceWriter:
             "filename",
             "size_mb",
             "blocksize",
-            "cluster_mode",
             "read_only",
         }
         mock_config_reader._get_current_device_attrs.assert_called_once_with(
@@ -732,7 +678,6 @@ class TestDeviceWriter:
             "filename",
             "size_mb",
             "blocksize",
-            "cluster_mode",
         }
         creation_params = {"filename": "/dev/sda", "size_mb": "1024"}
         post_creation_attrs = {
@@ -749,7 +694,7 @@ class TestDeviceWriter:
         }
         mock_config_reader._get_current_device_attrs.return_value = current_attrs
 
-        # Mock sysfs.read_sysfs to raise error for non-existent attributes (blocksize, cluster_mode)
+        # Mock sysfs.read_sysfs to raise error for non-existent attribute (blocksize)
         mock_sysfs.read_sysfs.side_effect = SCSTError("File not found")
 
         # Act: Call the method under test
@@ -766,7 +711,6 @@ class TestDeviceWriter:
             "filename",
             "size_mb",
             "blocksize",
-            "cluster_mode",
             "read_only",
             "rotational",
         }
