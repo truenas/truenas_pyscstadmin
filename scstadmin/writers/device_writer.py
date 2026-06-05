@@ -105,10 +105,6 @@ class DeviceWriter:
             creation_params: Parameters that must be provided during 'add_device' command
             post_creation_attrs: Attributes to set after device creation via sysfs
 
-        Special handling:
-            - cluster_mode parameter is deferred to end of creation command to ensure
-              proper ordering after t10_dev_id parameter
-
         Example:
             creation_params = {'filename': '/dev/sda', 'size_mb': '1024'}
             post_creation_attrs = {'read_only': '1', 'rotational': '0'}
@@ -121,19 +117,7 @@ class DeviceWriter:
         handler_path = f"{self.sysfs.SCST_HANDLERS}/{handler}/mgmt"
 
         # Build device creation command with only creation parameters
-        params = []
-
-        # Handle cluster_mode specially - set it after t10_dev_id
-        cluster_mode = None
-        for key, value in creation_params.items():
-            if key == "cluster_mode":
-                cluster_mode = value
-            else:
-                params.append(f"{key}={value}")
-
-        # Add cluster_mode at the end if present
-        if cluster_mode is not None:
-            params.append(f"cluster_mode={cluster_mode}")
+        params = [f"{key}={value}" for key, value in creation_params.items()]
 
         # Create the device
         if params:
